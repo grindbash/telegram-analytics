@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analytics Dashboard</title>
+    <title>Telegram Analytics</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
@@ -20,6 +20,100 @@
             margin: 0;
             padding: 0;
             overflow-x: hidden;
+        }
+
+        /* Welcome Screen Styles */
+        .welcome-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            padding: 20px;
+            text-align: center;
+            background: linear-gradient(135deg, var(--tg-theme-button-color, #3390ec) 0%, #8b5cf6 100%);
+            color: white;
+            transition: opacity 0.3s ease;
+        }
+
+        .welcome-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .welcome-title {
+            font-size: 24px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .welcome-subtitle {
+            font-size: 16px;
+            margin-bottom: 32px;
+            opacity: 0.9;
+        }
+
+        .tg-button {
+            background: white;
+            color: var(--tg-theme-button-color, #3390ec);
+            border: none;
+            border-radius: 12px;
+            padding: 14px 28px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .tg-button:active {
+            transform: scale(0.96);
+        }
+
+        /* Loading Modal Styles */
+        .loading-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--tg-theme-secondary-bg-color, #ffffff);
+            border-radius: 16px;
+            padding: 24px;
+            z-index: 1000;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            text-align: center;
+            max-width: 80%;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translate(-50%, -45%); }
+            to { opacity: 1; transform: translate(-50%, -50%); }
+        }
+
+        .loading-content img {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 16px;
+            border-radius: 8px;
+        }
+
+        .loading-content p {
+            font-size: 16px;
+            color: var(--tg-theme-text-color);
+            font-weight: 500;
+        }
+
+        /* Main Content Styles */
+        .main-content {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .main-content.visible {
+            opacity: 1;
         }
 
         .container {
@@ -122,18 +216,37 @@
             padding: 16px;
             text-align: center;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: relative;
         }
 
         .stat-value {
             font-size: 24px;
             font-weight: 700;
-            color: var(--tg-theme-button-color, #3390ec);
             margin-bottom: 4px;
         }
 
         .stat-label {
             font-size: 12px;
             color: var(--tg-theme-hint-color, #999999);
+        }
+
+        .stat-card .tooltip {
+            visibility: hidden;
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: #fff;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 1;
+        }
+
+        .stat-card:hover .tooltip {
+            visibility: visible;
         }
 
         .chart-container {
@@ -239,14 +352,12 @@
         .time-hour {
             font-size: 18px;
             font-weight: 700;
-            color: var(--tg-theme-button-color, #3390ec);
             margin-bottom: 4px;
         }
 
         .time-views {
             font-size: 14px;
             font-weight: 600;
-            color: var(--tg-theme-text-color, #000000);
         }
 
         .content-table {
@@ -300,6 +411,22 @@
             color: #ef4444;
         }
 
+        .er-low {
+            color: #ef4444;
+        }
+
+        .er-medium {
+            color: #f59e0b;
+        }
+
+        .er-high {
+            color: #10b981;
+        }
+
+        .er-unknown {
+            opacity: 0.6;
+        }
+
         @media (max-width: 480px) {
             .stats-grid {
                 grid-template-columns: 1fr;
@@ -316,7 +443,20 @@
     </style>
 </head>
 <body>
-    <div class="container">
+    <div id="welcome-screen" class="welcome-screen">
+        <h1 id="greeting" class="welcome-title">Добрый день!</h1>
+        <p class="welcome-subtitle">Анализатор статистики Telegram-каналов</p>
+        <button id="start-analysis" class="tg-button haptic-feedback">Провести анализ канала</button>
+    </div>
+
+    <div id="loading-modal" class="loading-modal">
+        <div class="loading-content">
+            <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcDl1eGJ0Z2F6dW1yZzR0dWZzZ3R5Z2Z6eGZ6eGZ6eGZ6eGZ6eGZ6eCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7bu3XilJ5BOiSGic/giphy.gif" alt="Loading">
+            <p id="loading-text">Загружаю данные за 24 часа...</p>
+        </div>
+    </div>
+
+    <div class="container main-content">
         <!-- Header -->
         <div class="header">
             <h1>📊 Аналитика канала</h1>
@@ -379,10 +519,48 @@
         const API_BASE_URL = 'https://telegram-analytics-t6pf.onrender.com';
         const CHANNEL_USERNAME = 'lityaginasvetlanalive';
 
+        // Функция для определения времени суток
+        function getTimeOfDay() {
+            const hours = new Date().getHours();
+            if (hours >= 5 && hours < 12) return 'утро';
+            if (hours >= 12 && hours < 18) return 'день';
+            if (hours >= 18 && hours < 23) return 'вечер';
+            return 'ночь';
+        }
+
+        // Функция для получения приветствия
+        function getGreeting() {
+            const time = getTimeOfDay();
+            const firstName = tg.initDataUnsafe?.user?.first_name || 'друг';
+            
+            switch(time) {
+                case 'утро': return `Доброе утро, ${firstName}!`;
+                case 'день': return `Добрый день, ${firstName}!`;
+                case 'вечер': return `Добрый вечер, ${firstName}!`;
+                case 'ночь': return `Доброй ночи, ${firstName}!`;
+                default: return `Привет, ${firstName}!`;
+            }
+        }
+
+        // Функция показа модального окна загрузки
+        function showLoadingModal(text) {
+            const loadingModal = document.getElementById('loading-modal');
+            const loadingText = document.getElementById('loading-text');
+            
+            loadingText.textContent = text;
+            loadingModal.style.display = 'block';
+        }
+
+        // Функция скрытия модального окна
+        function hideLoadingModal() {
+            const loadingModal = document.getElementById('loading-modal');
+            loadingModal.style.display = 'none';
+        }
+
         // Основная функция загрузки данных
         async function loadData(hoursBack = 24) {
             try {
-                showLoading();
+                showLoadingModal(`Загружаю данные за ${getPeriodText(hoursBack)}...`);
                 
                 const response = await fetch(`${API_BASE_URL}/analyze`, {
                     method: 'POST',
@@ -406,12 +584,49 @@
                 }
                 
                 currentData = data;
+                hideLoadingModal();
+                showMainContent();
                 updateDashboard(data);
                 
             } catch (error) {
                 console.error('Ошибка загрузки:', error);
+                hideLoadingModal();
                 showError(error.message);
             }
+        }
+
+        function getPeriodText(hours) {
+            if (hours === 24) return '24 часа';
+            if (hours === 168) return '7 дней';
+            if (hours === 720) return '30 дней';
+            return `${hours} часов`;
+        }
+
+        // Показать основной контент
+        function showMainContent() {
+            const welcomeScreen = document.getElementById('welcome-screen');
+            const mainContent = document.querySelector('.main-content');
+            
+            welcomeScreen.classList.add('hidden');
+            mainContent.style.display = 'block';
+            setTimeout(() => {
+                mainContent.classList.add('visible');
+            }, 50);
+        }
+
+        // Получить цвет для ER в зависимости от значения
+        function getERColor(value) {
+            if (value === 0 || value === null) return 'er-unknown';
+            if (value < 2) return 'er-low';
+            if (value < 5) return 'er-medium';
+            return 'er-high';
+        }
+
+        // Форматирование значения ER
+        function formatER(value, quality) {
+            if (value === 0 || value === null) return '<span class="er-unknown">нет данных</span>';
+            if (quality === 'questionable') return `<span class="er-low" title="Возможны неточности в данных">${value}% ⚠️</span>`;
+            return `<span class="${getERColor(value)}">${value}%</span>`;
         }
 
         // Обновление интерфейса
@@ -435,53 +650,69 @@
             const tab = document.getElementById('overview');
             if (!tab) return;
             
+            const erViews = data.summary?.engagement_rate?.er_views || 0;
+            const erSubs = data.summary?.engagement_rate?.er_subscribers || 0;
+            const erQuality = data.summary?.engagement_rate?.er_quality || 'normal';
+            
             tab.innerHTML = `
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-value">${data.channel_info?.subscribers || 0}</div>
                         <div class="stat-label">Подписчиков</div>
+                        <div class="tooltip">Актуально на момент анализа</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-value">${data.summary?.total_posts || 0}</div>
                         <div class="stat-label">Постов</div>
+                        <div class="tooltip">За выбранный период</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-value">${data.summary?.total_views || 0}</div>
                         <div class="stat-label">Просмотры</div>
+                        <div class="tooltip">Сумма просмотров всех постов</div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-value">${data.summary?.avg_views_per_post || 0}</div>
-                        <div class="stat-label">Средний охват</div>
-                    </div>
+                    <div class="stat-value">${data.summary?.avg_views_per_post || 0}</div>
+                    <div class="stat-label">Средний охват</div>
+                    <div class="tooltip">Среднее значение просмотров на пост</div>
                 </div>
 
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-value">${data.summary?.total_reactions || 0}</div>
                         <div class="stat-label">Реакции</div>
+                        <div class="tooltip">Сумма всех реакций</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-value">${data.summary?.total_forwards || 0}</div>
                         <div class="stat-label">Репосты</div>
+                        <div class="tooltip">Количество пересланных сообщений</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-value">${data.summary?.total_comments || 0}</div>
                         <div class="stat-label">Комментарии</div>
+                        <div class="tooltip">Общее количество комментариев</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-value">${data.summary?.engagement_rate?.er_subscribers || 0}%</div>
-                        <div class="stat-label">Вовлеченность</div>
+                        <div class="stat-value">${formatER(erViews, erQuality)}</div>
+                        <div class="stat-label">
+                            ER (просмотры)
+                            <span style="font-size:10px;display:block;opacity:0.7">(реакции + комменты + репосты)</span>
+                        </div>
+                        <div class="tooltip">Engagement Rate: процент взаимодействий от просмотров</div>
                     </div>
                 </div>
 
-                ${data.recommendations?.length ? `
                 <div class="recommendations">
-                    <h3>💡 Рекомендации</h3>
+                    <h3>💡 Анализ вовлеченности</h3>
                     <ul>
-                        ${data.recommendations.map(r => `<li>${r}</li>`).join('')}
+                        <li>📊 <strong>ER (просмотры):</strong> ${formatER(erViews, erQuality)} - основной показатель</li>
+                        ${erSubs > 0 ? `<li>👥 <strong>ER (подписчики):</strong> ${formatER(erSubs, erQuality)} - для небольших каналов</li>` : ''}
+                        ${erQuality === 'questionable' ? 
+                          '<li>⚠️ <strong>Внимание:</strong> Возможны неточности в данных о подписчиках</li>' : ''}
+                        <li>🔢 <strong>Формула:</strong> (Реакции + Комментарии + Репосты) / Просмотры × 100%</li>
+                        ${data.recommendations?.length ? data.recommendations.map(r => `<li>${r}</li>`).join('') : ''}
                     </ul>
                 </div>
-                ` : ''}
             `;
         }
 
@@ -507,19 +738,27 @@
                             <tr>
                                 <th>Тип</th>
                                 <th>Кол-во</th>
-                                <th>Просм.</th>
-                                <th>Средн.</th>
+                                <th>Просмотры</th>
+                                <th>Среднее</th>
+                                <th>ER</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${contentTypes.map(type => `
+                            ${contentTypes.map(type => {
+                                const stats = data.content_analysis[type];
+                                const er = stats.total_views > 0 
+                                    ? Math.round((stats.total_reactions + stats.total_comments + stats.total_forwards) / stats.total_views * 100) 
+                                    : 0;
+                                return `
                                 <tr>
                                     <td>${type}</td>
-                                    <td>${data.content_analysis[type].count}</td>
-                                    <td>${data.content_analysis[type].total_views}</td>
-                                    <td>${Math.round(data.content_analysis[type].total_views / data.content_analysis[type].count)}</td>
+                                    <td>${stats.count}</td>
+                                    <td>${stats.total_views}</td>
+                                    <td>${Math.round(stats.total_views / stats.count) || 0}</td>
+                                    <td class="${getERColor(er)}">${er}%</td>
                                 </tr>
-                            `).join('')}
+                                `;
+                            }).join('')}
                         </tbody>
                     </table>
                 </div>
@@ -565,14 +804,19 @@
             
             const colors = ['#fbbf24', '#9ca3af', '#f97316', '#6b7280', '#6b7280'];
             
-            tab.innerHTML = data.top_posts.map((post, i) => `
+            tab.innerHTML = data.top_posts.map((post, i) => {
+                const er = post.views > 0 
+                    ? Math.round((post.reactions + post.comments + post.forwards) / post.views * 100) 
+                    : 0;
+                
+                return `
                 <div class="top-post">
                     <div class="post-header">
                         <span class="post-rank" style="color: ${colors[i]};">${i + 1}</span>
                         <span class="post-type">${post.content_type}</span>
                     </div>
                     <div class="post-stats">
-                        <span>👀 ${post.views}</span>
+                        <span>👀 ${post.views} <span class="${getERColor(er)}">(ER: ${er}%)</span></span>
                         <span>❤️ ${post.reactions}</span>
                         <span>📤 ${post.forwards}</span>
                         <span>${post.date}</span>
@@ -581,7 +825,8 @@
                         ${post.text_preview || 'Без текста'}
                     </div>
                 </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         // Инициализация графиков
@@ -704,11 +949,24 @@
             }
         });
 
+        document.getElementById('start-analysis').addEventListener('click', function() {
+            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+            loadData(24);
+        });
+
         tg.onEvent('themeChanged', () => location.reload());
+
+        // Инициализация приложения
+        document.addEventListener('DOMContentLoaded', function() {
+            // Устанавливаем приветствие с именем пользователя
+            document.getElementById('greeting').textContent = getGreeting();
+            
+            // Скрываем основной контент при загрузке
+            document.querySelector('.main-content').style.display = 'none';
+        });
 
         // Запуск приложения
         tg.ready();
-        loadData(24); // Загрузка данных за 24 часа по умолчанию
     </script>
 </body>
 </html>
