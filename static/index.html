@@ -38,7 +38,7 @@
             background: linear-gradient(135deg, var(--tg-theme-button-color, #3390ec) 0%, #8b5cf6 100%);
             color: white;
             transition: opacity 0.3s ease;
-            z-index: 100;
+            z-index: 1000;
         }
 
         .welcome-screen.hidden {
@@ -85,7 +85,7 @@
             background: var(--tg-theme-secondary-bg-color, #ffffff);
             border-radius: 16px;
             padding: 24px;
-            z-index: 1000;
+            z-index: 999;
             box-shadow: 0 4px 20px rgba(0,0,0,0.15);
             text-align: center;
             max-width: 80%;
@@ -562,13 +562,86 @@
             loadingModal.style.display = 'none';
         }
 
+        // Функция получения текста периода
+        function getPeriodText(hours) {
+            if (hours === 24) return '24 часа';
+            if (hours === 168) return '7 дней';
+            if (hours === 720) return '30 дней';
+            return `${hours} часов`;
+        }
+
+        // Показать основной контент
+        function showMainContent() {
+            const mainContent = document.querySelector('.main-content');
+            setTimeout(() => {
+                mainContent.classList.add('visible');
+            }, 50);
+        }
+
+        // Получить цвет для ER в зависимости от значения
+        function getERColor(value) {
+            if (value === 0 || value === null) return 'er-unknown';
+            if (value < 2) return 'er-low';
+            if (value < 5) return 'er-medium';
+            return 'er-high';
+        }
+
+        // Форматирование значения ER
+        function formatER(value, quality) {
+            if (value === 0 || value === null) return '<span class="er-unknown">нет данных</span>';
+            if (quality === 'questionable') return `<span class="er-medium" title="Возможны неточности в данных">${value}%</span>`;
+            return `<span class="${getERColor(value)}">${value}%</span>`;
+        }
+
+        // Обработка данных перед отображением
+        function processDataBeforeDisplay(data, hoursBack) {
+            // Форматируем даты
+            if (data.analysis_period) {
+                data.analysis_period.hours_back = hoursBack;
+                
+                // Для 24 часов используем текущую дату
+                const now = new Date();
+                const endDate = new Date(now);
+                const startDate = new Date(now);
+                startDate.setHours(startDate.getHours() - hoursBack);
+                
+                const formatOptions = {
+                    day: '2-digit', 
+                    month: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                };
+                
+                data.analysis_period.start_time = startDate.toLocaleDateString('ru-RU', formatOptions);
+                data.analysis_period.end_time = endDate.toLocaleDateString('ru-RU', formatOptions);
+            }
+            
+            // Обрабатываем топ постов
+            if (data.top_posts) {
+                data.top_posts.forEach(post => {
+                    // Исправляем NaN значения
+                    if (isNaN(post.views)) post.views = 0;
+                    if (isNaN(post.reactions)) post.reactions = 0;
+                    if (isNaN(post.comments)) post.comments = 0;
+                    if (isNaN(post.forwards)) post.forwards = 0;
+                    
+                    // Вычисляем ER
+                    const totalInteractions = post.reactions + post.comments + post.forwards;
+                    post.er = post.views > 0 ? Math.round(totalInteractions / post.views * 100) : 0;
+                });
+            }
+            
+            // Обрабатываем случаи отсутствия данных
+            data.emptyData = data.summary?.total_posts === 0;
+        }
+
         // Основная функция загрузки данных
         async function loadData(hoursBack = 24) {
             try {
                 const periodText = getPeriodText(hoursBack);
-                document.getElementById('analysis-period').textContent = `Анализ за ${periodText}`;
+                document.getElementById('analysis-period').textContent = `Загрузка данных за ${periodText}...`;
                 
-                // Показываем загрузку только после нажатия кнопки
+                // Показываем попап только если приветственный экран скрыт
                 if (document.getElementById('welcome-screen').classList.contains('hidden')) {
                     showLoadingModal(`Загружаю данные за ${periodText}...`);
                 }
@@ -594,61 +667,20 @@
                     throw new Error(data.error);
                 }
                 
-                // Корректируем ER для больших периодов
-                if (data.summary?.engagement_rate) {
-                    const er = data.summary.engagement_rate;
-                    if (er.er_views > 100) {
-                        er.er_views = 100;
-                        er.er_quality = 'normal';
-                    }
-                    er.er_views = Math.round(er.er_views * 100) / 100;
-                    er.er_subscribers = Math.round(er.er_subscribers * 100) / 100;
-                }
+                // Корректируем данные перед отображением
+                processDataBeforeDisplay(data, hoursBack);
                 
                 currentData = data;
-                hideLoadingModal();
-                showMainContent();
+                
+                // Обновляем интерфейс
                 updateDashboard(data);
                 
             } catch (error) {
                 console.error('Ошибка загрузки:', error);
-                hideLoadingModal();
                 showError(error.message);
+            } finally {
+                hideLoadingModal();
             }
-        }
-
-        function getPeriodText(hours) {
-            if (hours === 24) return '24 часа';
-            if (hours === 168) return '7 дней';
-            if (hours === 720) return '30 дней';
-            return `${hours} часов`;
-        }
-
-        // Показать основной контент
-        function showMainContent() {
-            const welcomeScreen = document.getElementById('welcome-screen');
-            const mainContent = document.querySelector('.main-content');
-            
-            welcomeScreen.classList.add('hidden');
-            mainContent.style.display = 'block';
-            setTimeout(() => {
-                mainContent.classList.add('visible');
-            }, 50);
-        }
-
-        // Получить цвет для ER в зависимости от значения
-        function getERColor(value) {
-            if (value === 0 || value === null) return 'er-unknown';
-            if (value < 2) return 'er-low';
-            if (value < 5) return 'er-medium';
-            return 'er-high';
-        }
-
-        // Форматирование значения ER
-        function formatER(value, quality) {
-            if (value === 0 || value === null) return '<span class="er-unknown">нет данных</span>';
-            if (quality === 'questionable') return `<span class="er-medium" title="Возможны неточности в данных">${value}%</span>`;
-            return `<span class="${getERColor(value)}">${value}%</span>`;
         }
 
         // Обновление интерфейса
@@ -658,19 +690,30 @@
             updateContentTab(data);
             updateTimingTab(data);
             updatePostsTab(data);
+            
+            // Показываем основной контент после обновления данных
+            if (!data.emptyData) {
+                showMainContent();
+            }
         }
 
         function updateHeader(data) {
             document.getElementById('channel-name').textContent = data.channel_info?.title || CHANNEL_USERNAME;
             if (data.analysis_period) {
+                const periodText = getPeriodText(data.analysis_period.hours_back);
                 document.getElementById('analysis-period').textContent = 
-                    `Анализ за ${getPeriodText(data.analysis_period.hours_back)}: ${data.analysis_period.start_time} - ${data.analysis_period.end_time}`;
+                    `Анализ за ${periodText}: ${data.analysis_period.start_time} - ${data.analysis_period.end_time}`;
             }
         }
 
         function updateOverviewTab(data) {
             const tab = document.getElementById('overview');
             if (!tab) return;
+            
+            if (data.emptyData) {
+                tab.innerHTML = '<div class="error">Нет данных за выбранный период</div>';
+                return;
+            }
             
             const erViews = data.summary?.engagement_rate?.er_views || 0;
             const erSubs = data.summary?.engagement_rate?.er_subscribers || 0;
@@ -736,7 +779,12 @@
 
         function updateContentTab(data) {
             const tab = document.getElementById('content');
-            if (!tab || !data.content_analysis) return;
+            if (!tab) return;
+            
+            if (data.emptyData || !data.content_analysis) {
+                tab.innerHTML = '<div class="error">Нет данных за выбранный период</div>';
+                return;
+            }
             
             const contentTypes = Object.keys(data.content_analysis);
             const counts = contentTypes.map(type => data.content_analysis[type].count);
@@ -787,7 +835,12 @@
 
         function updateTimingTab(data) {
             const tab = document.getElementById('timing');
-            if (!tab || !data.time_analysis) return;
+            if (!tab) return;
+            
+            if (data.emptyData || !data.time_analysis) {
+                tab.innerHTML = '<div class="error">Нет данных за выбранный период</div>';
+                return;
+            }
             
             const hours = Object.keys(data.time_analysis.hourly_stats).map(h => `${h}:00`);
             const views = Object.values(data.time_analysis.hourly_stats).map(s => s.total_views);
@@ -818,15 +871,16 @@
 
         function updatePostsTab(data) {
             const tab = document.getElementById('posts');
-            if (!tab || !data.top_posts) return;
+            if (!tab) return;
+            
+            if (data.emptyData || !data.top_posts || data.top_posts.length === 0) {
+                tab.innerHTML = '<div class="error">Нет данных за выбранный период</div>';
+                return;
+            }
             
             const colors = ['#fbbf24', '#9ca3af', '#f97316', '#6b7280', '#6b7280'];
             
             tab.innerHTML = data.top_posts.map((post, i) => {
-                const er = post.views > 0 
-                    ? Math.round((post.reactions + post.comments + post.forwards) / post.views * 100) 
-                    : 0;
-                
                 return `
                 <div class="top-post">
                     <div class="post-header">
@@ -834,7 +888,7 @@
                         <span class="post-type">${post.content_type}</span>
                     </div>
                     <div class="post-stats">
-                        <span>👀 ${post.views} <span class="${getERColor(er)}">(ER: ${er}%)</span></span>
+                        <span>👀 ${post.views} <span class="${getERColor(post.er)}">(ER: ${post.er}%)</span></span>
                         <span>❤️ ${post.reactions}</span>
                         <span>📤 ${post.forwards}</span>
                         <span>${post.date}</span>
@@ -967,8 +1021,22 @@
             }
         });
 
+        // Обработчик кнопки "Провести анализ канала"
         document.getElementById('start-analysis').addEventListener('click', function() {
             if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+            
+            // 1. Скрываем экран приветствия
+            document.getElementById('welcome-screen').classList.add('hidden');
+            
+            // 2. Показываем основной интерфейс
+            const mainContent = document.querySelector('.main-content');
+            mainContent.style.display = 'block';
+            mainContent.classList.remove('visible');
+            
+            // 3. Показываем попап загрузки
+            showLoadingModal("Подготавливаю анализ...");
+            
+            // 4. Загружаем данные
             loadData(24);
         });
 
