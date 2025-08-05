@@ -48,6 +48,28 @@
             opacity: 0.9;
         }
 
+        .period-selector {
+            margin: 8px 0;
+            text-align: center;
+        }
+
+        .period-select {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            padding: 6px 12px;
+            color: white;
+            font-size: 12px;
+            outline: none;
+            cursor: pointer;
+            width: 120px;
+        }
+
+        .period-select option {
+            background: var(--tg-theme-button-color, #3390ec);
+            color: white;
+        }
+
         .tabs {
             display: flex;
             background: var(--tg-theme-secondary-bg-color, #f8f9fa);
@@ -266,6 +288,18 @@
             transform: scale(0.98);
         }
 
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: var(--tg-theme-hint-color, #999999);
+        }
+
+        .error {
+            text-align: center;
+            padding: 20px;
+            color: #ef4444;
+        }
+
         @media (max-width: 480px) {
             .stats-grid {
                 grid-template-columns: 1fr;
@@ -286,8 +320,17 @@
         <!-- Header -->
         <div class="header">
             <h1>📊 Аналитика канала</h1>
-            <p>Литягина Светлана | Фотограф</p>
-            <p style="font-size: 11px; margin-top: 4px;">04.07.2025 - 03.08.2025</p>
+            <p id="channel-name">Загрузка...</p>
+            
+            <div class="period-selector">
+                <select id="period-select" class="period-select">
+                    <option value="24">24 часа</option>
+                    <option value="168">7 дней</option>
+                    <option value="720">30 дней</option>
+                </select>
+            </div>
+            
+            <p id="analysis-period" style="font-size: 11px; margin-top: 4px;">Загрузка данных...</p>
         </div>
 
         <!-- Navigation Tabs -->
@@ -298,206 +341,31 @@
             <button class="tab haptic-feedback" onclick="switchTab(event, 'posts')">🏆 Топ</button>
         </div>
 
-        <!-- Overview Tab -->
+        <!-- Tab Contents -->
         <div id="overview" class="tab-content active">
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value">130</div>
-                    <div class="stat-label">Подписчиков</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">34</div>
-                    <div class="stat-label">Постов</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">2.1K</div>
-                    <div class="stat-label">Просмотры</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">61.8</div>
-                    <div class="stat-label">Средний охват</div>
-                </div>
-            </div>
-
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value">332</div>
-                    <div class="stat-label">Реакции</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">57</div>
-                    <div class="stat-label">Репосты</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">30</div>
-                    <div class="stat-label">Комментарии</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">19.95%</div>
-                    <div class="stat-label">Вовлеченность</div>
-                </div>
-            </div>
-
-            <div class="recommendations">
-                <h3>💡 Рекомендации</h3>
-                <ul>
-                    <li>🎯 Видео показывают лучшие результаты</li>
-                    <li>⏰ Лучшее время: 17:00-18:00</li>
-                    <li>🔥 Отличная вовлеченность!</li>
-                </ul>
-            </div>
+            <div class="loading">Загрузка данных...</div>
         </div>
 
-        <!-- Content Tab -->
         <div id="content" class="tab-content">
-            <div class="card">
-                <h3 style="margin-bottom: 16px; font-size: 16px;">📊 Типы контента</h3>
-                <div class="chart-container">
-                    <canvas id="contentChart"></canvas>
-                </div>
-            </div>
-
-            <div class="card">
-                <h3 style="margin-bottom: 16px; font-size: 16px;">📈 Статистика контента</h3>
-                <table class="content-table">
-                    <thead>
-                        <tr>
-                            <th>Тип</th>
-                            <th>Кол-во</th>
-                            <th>Просм.</th>
-                            <th>Средн.</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr><td>Фото</td><td>9</td><td>635</td><td>70.6</td></tr>
-                        <tr><td>Видео</td><td>6</td><td>455</td><td>75.8</td></tr>
-                        <tr><td>Фото+текст</td><td>5</td><td>368</td><td>73.6</td></tr>
-                        <tr><td>Аудио</td><td>5</td><td>290</td><td>58.0</td></tr>
-                        <tr><td>Текст</td><td>3</td><td>148</td><td>49.3</td></tr>
-                    </tbody>
-                </table>
-            </div>
+            <div class="loading">Загрузка данных...</div>
         </div>
 
-        <!-- Timing Tab -->
         <div id="timing" class="tab-content">
-            <div class="time-grid">
-                <div class="time-card">
-                    <div class="medal">🥇</div>
-                    <div class="time-hour">17:00</div>
-                    <div class="time-views">118 просм.</div>
-                </div>
-                <div class="time-card">
-                    <div class="medal">🥈</div>
-                    <div class="time-hour">18:00</div>
-                    <div class="time-views">80.5 просм.</div>
-                </div>
-                <div class="time-card">
-                    <div class="medal">🥉</div>
-                    <div class="time-hour">16:00</div>
-                    <div class="time-views">78.5 просм.</div>
-                </div>
-            </div>
-
-            <div class="card">
-                <h3 style="margin-bottom: 16px; font-size: 16px;">📅 Активность по часам</h3>
-                <div class="chart-container">
-                    <canvas id="timeChart"></canvas>
-                </div>
-            </div>
+            <div class="loading">Загрузка данных...</div>
         </div>
 
-        <!-- Top Posts Tab -->
         <div id="posts" class="tab-content">
-            <div class="top-post">
-                <div class="post-header">
-                    <span class="post-rank" style="color: #fbbf24;">1</span>
-                    <span class="post-type">video</span>
-                </div>
-                <div class="post-stats">
-                    <span>👀 118</span>
-                    <span>❤️ 10</span>
-                    <span>📤 3</span>
-                    <span>16.07.2025</span>
-                </div>
-                <div class="post-preview">
-                    ☀️ Чувствуете, как лето пролетает мимо? Кажется, только начался июнь, а за окном уже серед...
-                </div>
-            </div>
-
-            <div class="top-post">
-                <div class="post-header">
-                    <span class="post-rank" style="color: #9ca3af;">2</span>
-                    <span class="post-type">photo</span>
-                </div>
-                <div class="post-stats">
-                    <span>👀 90</span>
-                    <span>❤️ 20</span>
-                    <span>📤 1</span>
-                    <span>12.07.2025</span>
-                </div>
-                <div class="post-preview">
-                    Крик души фотографа… Представьте: лето, солнце, идеальная погода. Вы надеваете то самое...
-                </div>
-            </div>
-
-            <div class="top-post">
-                <div class="post-header">
-                    <span class="post-rank" style="color: #f97316;">3</span>
-                    <span class="post-type">photo</span>
-                </div>
-                <div class="post-stats">
-                    <span>👀 88</span>
-                    <span>❤️ 16</span>
-                    <span>📤 1</span>
-                    <span>22.07.2025</span>
-                </div>
-                <div class="post-preview">
-                    #отзыв
-                </div>
-            </div>
-
-            <div class="top-post">
-                <div class="post-header">
-                    <span class="post-rank" style="color: #6b7280;">4</span>
-                    <span class="post-type">photo album</span>
-                </div>
-                <div class="post-stats">
-                    <span>👀 86</span>
-                    <span>❤️ 16</span>
-                    <span>📤 9</span>
-                    <span>26.07.2025</span>
-                </div>
-                <div class="post-preview">
-                    Фотографии на фотоаппарат не успела сделать, немного на телефон сняла. Будет повод пойти еще раз...
-                </div>
-            </div>
-
-            <div class="top-post">
-                <div class="post-header">
-                    <span class="post-rank" style="color: #6b7280;">5</span>
-                    <span class="post-type">video</span>
-                </div>
-                <div class="post-stats">
-                    <span>👀 83</span>
-                    <span>❤️ 15</span>
-                    <span>📤 0</span>
-                    <span>17.07.2025</span>
-                </div>
-                <div class="post-preview">
-                    0.5x или 3x? 🤔 Думаете, это просто приближение и отдаление? На самом деле, это работа соверше...
-                </div>
-            </div>
+            <div class="loading">Загрузка данных...</div>
         </div>
     </div>
 
     <script>
-        // Initialize Telegram WebApp
-        let tg = window.Telegram.WebApp;
+        // Инициализация Telegram WebApp
+        const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
 
-        // Set theme colors
+        // Установка цветов темы
         document.documentElement.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color || '#ffffff');
         document.documentElement.style.setProperty('--tg-theme-text-color', tg.themeParams.text_color || '#000000');
         document.documentElement.style.setProperty('--tg-theme-button-color', tg.themeParams.button_color || '#3390ec');
@@ -505,52 +373,231 @@
         document.documentElement.style.setProperty('--tg-theme-secondary-bg-color', tg.themeParams.secondary_bg_color || '#f8f9fa');
         document.documentElement.style.setProperty('--tg-theme-hint-color', tg.themeParams.hint_color || '#999999');
 
-        // Charts
+        // Глобальные переменные
         let contentChart, timeChart;
+        let currentData = null;
+        const API_BASE_URL = 'https://telegram-analytics-t6pf.onrender.com';
+        const CHANNEL_USERNAME = 'lityaginasvetlanalive';
 
-        function switchTab(event, tabName) {
-            // Haptic feedback
-            if (tg.HapticFeedback) {
-                tg.HapticFeedback.impactOccurred('light');
-            }
-
-            // Hide all tabs
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-
-            // Show selected tab
-            document.getElementById(tabName).classList.add('active');
-            event.target.classList.add('active');
-
-            // Initialize charts when needed
-            if (tabName === 'content' && !contentChart) {
-                initContentChart();
-            }
-            if (tabName === 'timing' && !timeChart) {
-                initTimeChart();
+        // Основная функция загрузки данных
+        async function loadData(hoursBack = 24) {
+            try {
+                showLoading();
+                
+                const response = await fetch(`${API_BASE_URL}/analyze`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        channel_username: CHANNEL_USERNAME,
+                        hours_back: hoursBack
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Ошибка сервера: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                currentData = data;
+                updateDashboard(data);
+                
+            } catch (error) {
+                console.error('Ошибка загрузки:', error);
+                showError(error.message);
             }
         }
 
-        function initContentChart() {
-            const ctx = document.getElementById('contentChart').getContext('2d');
+        // Обновление интерфейса
+        function updateDashboard(data) {
+            updateHeader(data);
+            updateOverviewTab(data);
+            updateContentTab(data);
+            updateTimingTab(data);
+            updatePostsTab(data);
+        }
+
+        function updateHeader(data) {
+            document.getElementById('channel-name').textContent = data.channel_info?.title || CHANNEL_USERNAME;
+            if (data.analysis_period) {
+                document.getElementById('analysis-period').textContent = 
+                    `${data.analysis_period.start_time} - ${data.analysis_period.end_time}`;
+            }
+        }
+
+        function updateOverviewTab(data) {
+            const tab = document.getElementById('overview');
+            if (!tab) return;
+            
+            tab.innerHTML = `
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">${data.channel_info?.subscribers || 0}</div>
+                        <div class="stat-label">Подписчиков</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${data.summary?.total_posts || 0}</div>
+                        <div class="stat-label">Постов</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${data.summary?.total_views || 0}</div>
+                        <div class="stat-label">Просмотры</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${data.summary?.avg_views_per_post || 0}</div>
+                        <div class="stat-label">Средний охват</div>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">${data.summary?.total_reactions || 0}</div>
+                        <div class="stat-label">Реакции</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${data.summary?.total_forwards || 0}</div>
+                        <div class="stat-label">Репосты</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${data.summary?.total_comments || 0}</div>
+                        <div class="stat-label">Комментарии</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${data.summary?.engagement_rate?.er_subscribers || 0}%</div>
+                        <div class="stat-label">Вовлеченность</div>
+                    </div>
+                </div>
+
+                ${data.recommendations?.length ? `
+                <div class="recommendations">
+                    <h3>💡 Рекомендации</h3>
+                    <ul>
+                        ${data.recommendations.map(r => `<li>${r}</li>`).join('')}
+                    </ul>
+                </div>
+                ` : ''}
+            `;
+        }
+
+        function updateContentTab(data) {
+            const tab = document.getElementById('content');
+            if (!tab || !data.content_analysis) return;
+            
+            const contentTypes = Object.keys(data.content_analysis);
+            const counts = contentTypes.map(type => data.content_analysis[type].count);
+            
+            tab.innerHTML = `
+                <div class="card">
+                    <h3 style="margin-bottom: 16px; font-size: 16px;">📊 Типы контента</h3>
+                    <div class="chart-container">
+                        <canvas id="contentChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 style="margin-bottom: 16px; font-size: 16px;">📈 Статистика контента</h3>
+                    <table class="content-table">
+                        <thead>
+                            <tr>
+                                <th>Тип</th>
+                                <th>Кол-во</th>
+                                <th>Просм.</th>
+                                <th>Средн.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${contentTypes.map(type => `
+                                <tr>
+                                    <td>${type}</td>
+                                    <td>${data.content_analysis[type].count}</td>
+                                    <td>${data.content_analysis[type].total_views}</td>
+                                    <td>${Math.round(data.content_analysis[type].total_views / data.content_analysis[type].count)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            initContentChart(contentTypes, counts);
+        }
+
+        function updateTimingTab(data) {
+            const tab = document.getElementById('timing');
+            if (!tab || !data.time_analysis) return;
+            
+            const hours = Object.keys(data.time_analysis.hourly_stats).map(h => `${h}:00`);
+            const views = Object.values(data.time_analysis.hourly_stats).map(s => s.total_views);
+            const bestHours = data.time_analysis.best_hours?.slice(0, 3) || [];
+            const medals = ['🥇', '🥈', '🥉'];
+            
+            tab.innerHTML = `
+                <div class="time-grid">
+                    ${bestHours.map((hour, i) => `
+                        <div class="time-card">
+                            <div class="medal">${medals[i]}</div>
+                            <div class="time-hour">${hour.hour}:00</div>
+                            <div class="time-views">${Math.round(hour.avg_views)} просм.</div>
+                        </div>
+                    `).join('')}
+                </div>
+
+                <div class="card">
+                    <h3 style="margin-bottom: 16px; font-size: 16px;">📅 Активность по часам</h3>
+                    <div class="chart-container">
+                        <canvas id="timeChart"></canvas>
+                    </div>
+                </div>
+            `;
+            
+            initTimeChart(hours, views);
+        }
+
+        function updatePostsTab(data) {
+            const tab = document.getElementById('posts');
+            if (!tab || !data.top_posts) return;
+            
+            const colors = ['#fbbf24', '#9ca3af', '#f97316', '#6b7280', '#6b7280'];
+            
+            tab.innerHTML = data.top_posts.map((post, i) => `
+                <div class="top-post">
+                    <div class="post-header">
+                        <span class="post-rank" style="color: ${colors[i]};">${i + 1}</span>
+                        <span class="post-type">${post.content_type}</span>
+                    </div>
+                    <div class="post-stats">
+                        <span>👀 ${post.views}</span>
+                        <span>❤️ ${post.reactions}</span>
+                        <span>📤 ${post.forwards}</span>
+                        <span>${post.date}</span>
+                    </div>
+                    <div class="post-preview">
+                        ${post.text_preview || 'Без текста'}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Инициализация графиков
+        function initContentChart(labels, data) {
+            const ctx = document.getElementById('contentChart')?.getContext('2d');
+            if (!ctx) return;
+            
+            if (contentChart) contentChart.destroy();
+            
             contentChart = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Фото', 'Видео', 'Фото + текст', 'Аудио', 'Текст', 'Медиа'],
+                    labels: labels,
                     datasets: [{
-                        data: [9, 6, 5, 5, 3, 3],
-                        backgroundColor: [
-                            '#8b5cf6',
-                            '#06b6d4', 
-                            '#10b981',
-                            '#f59e0b',
-                            '#ef4444',
-                            '#ec4899'
-                        ],
+                        data: data,
+                        backgroundColor: ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899'],
                         borderWidth: 0
                     }]
                 },
@@ -561,9 +608,6 @@
                         legend: {
                             position: 'bottom',
                             labels: {
-                                fontSize: 12,
-                                padding: 10,
-                                usePointStyle: true,
                                 color: tg.themeParams.text_color || '#000000'
                             }
                         }
@@ -572,20 +616,21 @@
             });
         }
 
-        function initTimeChart() {
-            const ctx = document.getElementById('timeChart').getContext('2d');
-            const hours = ['3:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '21:00', '22:00', '23:00'];
-            const views = [59, 166, 107, 182, 131, 529, 103, 157, 118, 161, 253, 77, 57];
+        function initTimeChart(labels, data) {
+            const ctx = document.getElementById('timeChart')?.getContext('2d');
+            if (!ctx) return;
+            
+            if (timeChart) timeChart.destroy();
             
             timeChart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: hours,
+                    labels: labels,
                     datasets: [{
                         label: 'Просмотры',
-                        data: views,
+                        data: data,
                         borderColor: tg.themeParams.button_color || '#3390ec',
-                        backgroundColor: (tg.themeParams.button_color || '#3390ec') + '20',
+                        backgroundColor: `${tg.themeParams.button_color || '#3390ec'}20`,
                         fill: true,
                         tension: 0.4,
                         pointBackgroundColor: tg.themeParams.button_color || '#3390ec',
@@ -597,64 +642,73 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
+                    plugins: { legend: { display: false } },
                     scales: {
                         y: {
                             beginAtZero: true,
-                            grid: {
-                                color: tg.themeParams.hint_color || '#e0e0e0'
-                            },
-                            ticks: {
-                                color: tg.themeParams.text_color || '#000000',
-                                font: {
-                                    size: 11
-                                }
-                            }
+                            grid: { color: tg.themeParams.hint_color || '#e0e0e0' },
+                            ticks: { color: tg.themeParams.text_color || '#000000' }
                         },
                         x: {
-                            grid: {
-                                display: false
-                            },
-                            ticks: {
-                                color: tg.themeParams.text_color || '#000000',
-                                font: {
-                                    size: 11
-                                },
-                                maxRotation: 45
-                            }
+                            grid: { display: false },
+                            ticks: { color: tg.themeParams.text_color || '#000000' }
                         }
                     }
                 }
             });
         }
 
-        // Add haptic feedback to all clickable elements
-        document.addEventListener('click', function(e) {
-            if (e.target.classList.contains('haptic-feedback')) {
-                if (tg.HapticFeedback) {
-                    tg.HapticFeedback.impactOccurred('light');
+        // Вспомогательные функции
+        function showLoading() {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.innerHTML = '<div class="loading">Загрузка данных...</div>';
+            });
+        }
+
+        function showError(message) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.innerHTML = `<div class="error">Ошибка: ${message}</div>`;
+            });
+        }
+
+        function switchTab(event, tabName) {
+            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+            
+            document.querySelectorAll('.tab-content, .tab').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+            
+            // Перерисовываем графики при переключении
+            if (currentData) {
+                if (tabName === 'content') {
+                    updateContentTab(currentData);
+                } else if (tabName === 'timing') {
+                    updateTimingTab(currentData);
                 }
+            }
+        }
+
+        // Обработчики событий
+        document.getElementById('period-select').addEventListener('change', function() {
+            const hours = parseInt(this.value);
+            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+            loadData(hours);
+        });
+
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('haptic-feedback') && tg.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('light');
             }
         });
 
-        // Initialize first chart if on content tab
-        if (document.getElementById('overview').classList.contains('active')) {
-            setTimeout(() => {
-                initContentChart();
-            }, 100);
-        }
+        tg.onEvent('themeChanged', () => location.reload());
 
-        // Handle theme changes
-        tg.onEvent('themeChanged', function() {
-            location.reload();
-        });
-
-        // Show that the app is ready
+        // Запуск приложения
         tg.ready();
+        loadData(24); // Загрузка данных за 24 часа по умолчанию
     </script>
 </body>
 </html>
