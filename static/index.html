@@ -475,7 +475,7 @@
                 </select>
             </div>
             
-            <p id="analysis-period" style="font-size: 11px; margin-top: 4px;">Загрузка данных...</p>
+            <p id="analysis-period" style="font-size: 11px; margin-top: 4px;">Выберите период анализа</p>
         </div>
 
         <!-- Navigation Tabs -->
@@ -594,13 +594,15 @@
                     throw new Error(data.error);
                 }
                 
-                // Для периода 30 дней корректируем ER если он некорректный
-                if (hoursBack === 720 && data.summary?.engagement_rate?.er_quality === 'questionable') {
-                    data.summary.engagement_rate.er_views = Math.min(
-                        data.summary.engagement_rate.er_views, 
-                        100 / (data.channel_info?.subscribers || 1)
-                    );
-                    data.summary.engagement_rate.er_quality = 'normal';
+                // Корректируем ER для больших периодов
+                if (data.summary?.engagement_rate) {
+                    const er = data.summary.engagement_rate;
+                    if (er.er_views > 100) {
+                        er.er_views = 100;
+                        er.er_quality = 'normal';
+                    }
+                    er.er_views = Math.round(er.er_views * 100) / 100;
+                    er.er_subscribers = Math.round(er.er_subscribers * 100) / 100;
                 }
                 
                 currentData = data;
@@ -614,6 +616,7 @@
                 showError(error.message);
             }
         }
+
         function getPeriodText(hours) {
             if (hours === 24) return '24 часа';
             if (hours === 168) return '7 дней';
@@ -644,7 +647,7 @@
         // Форматирование значения ER
         function formatER(value, quality) {
             if (value === 0 || value === null) return '<span class="er-unknown">нет данных</span>';
-            if (quality === 'questionable') return `<span class="er-low" title="Возможны неточности в данных">${value}% ⚠️</span>`;
+            if (quality === 'questionable') return `<span class="er-medium" title="Возможны неточности в данных">${value}%</span>`;
             return `<span class="${getERColor(value)}">${value}%</span>`;
         }
 
@@ -661,7 +664,7 @@
             document.getElementById('channel-name').textContent = data.channel_info?.title || CHANNEL_USERNAME;
             if (data.analysis_period) {
                 document.getElementById('analysis-period').textContent = 
-                    `${data.analysis_period.start_time} - ${data.analysis_period.end_time}`;
+                    `Анализ за ${getPeriodText(data.analysis_period.hours_back)}: ${data.analysis_period.start_time} - ${data.analysis_period.end_time}`;
             }
         }
 
@@ -675,7 +678,44 @@
             
             tab.innerHTML = `
                 <div class="stats-grid">
-                    <!-- ... (остальные stat-card остаются без изменений) ... -->
+                    <div class="stat-card">
+                        <div class="stat-value">${data.channel_info?.subscribers || 0}</div>
+                        <div class="stat-label">Подписчиков</div>
+                        <div class="tooltip">Актуально на момент анализа</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${data.summary?.total_posts || 0}</div>
+                        <div class="stat-label">Постов</div>
+                        <div class="tooltip">За выбранный период</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${data.summary?.total_views || 0}</div>
+                        <div class="stat-label">Просмотры</div>
+                        <div class="tooltip">Сумма просмотров всех постов</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${data.summary?.avg_views_per_post || 0}</div>
+                        <div class="stat-label">Средний охват</div>
+                        <div class="tooltip">Среднее значение просмотров на пост</div>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">${data.summary?.total_reactions || 0}</div>
+                        <div class="stat-label">Реакции</div>
+                        <div class="tooltip">Сумма всех реакций</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${data.summary?.total_forwards || 0}</div>
+                        <div class="stat-label">Репосты</div>
+                        <div class="tooltip">Количество пересланных сообщений</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${data.summary?.total_comments || 0}</div>
+                        <div class="stat-label">Комментарии</div>
+                        <div class="tooltip">Общее количество комментариев</div>
+                    </div>
                     <div class="stat-card">
                         <div class="stat-value">${formatER(erViews, erQuality)}</div>
                         <div class="stat-label">ER (просмотры)</div>
@@ -934,7 +974,7 @@
 
         tg.onEvent('themeChanged', () => location.reload());
 
-// Инициализация приложения
+        // Инициализация приложения
         document.addEventListener('DOMContentLoaded', function() {
             // Устанавливаем приветствие с именем пользователя
             document.getElementById('greeting').textContent = getGreeting();
@@ -942,7 +982,7 @@
             // Скрываем основной контент при загрузке
             document.querySelector('.main-content').style.display = 'none';
             
-            // Устанавливаем начальную дату
+            // Устанавливаем начальное состояние
             document.getElementById('analysis-period').textContent = 'Выберите период анализа';
         });
 
