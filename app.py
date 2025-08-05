@@ -588,21 +588,30 @@ class TelegramAnalytics:
         }
     
     def calculate_engagement_rate(self, views, reactions, comments, forwards, subscribers):
-        """Расчет engagement rate"""
-        if views == 0:
+        # Защита от нулевых значений и аномалий
+        if views == 0 or subscribers == 0:
             return {
                 'er_views': 0,
-                'er_subscribers': 0
+                'er_subscribers': 0,
+                'er_quality': 'low'  # Добавляем показатель качества данных
             }
         
         total_interactions = reactions + comments + forwards
-        er_views = (total_interactions / views) * 100
-        er_subscribers = (total_interactions / subscribers) * 100 if subscribers and subscribers > 0 else 0
+        
+        # Проверка на аномально высокие значения
+        subs_er = (total_interactions / subscribers) * 100
+        if subs_er > 100:  # Нереалистично высокий ER
+            subs_er = 0
+            er_quality = 'questionable'
+        else:
+            er_quality = 'normal'
         
         return {
-            'er_views': round(er_views, 2),
-            'er_subscribers': round(er_subscribers, 2)
+            'er_views': round((total_interactions / views) * 100, 2),
+            'er_subscribers': round(subs_er, 2),
+            'er_quality': er_quality
         }
+
     
     def generate_recommendations(self, content_stats, time_analysis, engagement, total_posts, hours_back):
         """Генерация рекомендаций"""
