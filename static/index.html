@@ -619,14 +619,17 @@
                     body: JSON.stringify(requestData)
                 });
 
-                const response = await fetch(`${API_BASE_URL}/analyze`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify(requestData)
-                });
+				const response = await fetch(`${API_BASE_URL}/analyze`, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						'Accept': 'application/json'
+					},
+					body: JSON.stringify({
+						channel_username: CHANNEL_USERNAME,
+						hours_back: hoursBack
+					})
+				});
 
                 const responseText = await response.text();
                 console.log('Полученный ответ:', responseText);
