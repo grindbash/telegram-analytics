@@ -522,7 +522,7 @@
         let contentChart, timeChart;
         let currentData = null;
         const API_BASE_URL = 'https://telegram-analytics-t6pf.onrender.com';
-        const CHANNEL_USERNAME = 'lityaginasvetlanalive';
+        const CHANNEL_USERNAME = 'lityaginasvetlanalive'; // Убедитесь, что это правильный username
 
         // Функция для определения времени суток
         function getTimeOfDay() {
@@ -593,13 +593,82 @@
             return `<span class="${getERColor(value)}">${value}%</span>`;
         }
 
+        // Основная функция загрузки данных
+        async function loadData(hoursBack = 24) {
+            try {
+                const periodText = getPeriodText(hoursBack);
+                document.getElementById('analysis-period').textContent = `Загрузка данных за ${periodText}...`;
+                
+                if (document.getElementById('welcome-screen').classList.contains('hidden')) {
+                    showLoadingModal(`Загружаю данные за ${periodText}...`);
+                }
+                
+                // Формируем корректное тело запроса
+                const requestData = {
+                    channel_username: CHANNEL_USERNAME,
+                    hours_back: hoursBack
+                };
+
+                console.log('Отправляемый запрос:', {
+                    url: `${API_BASE_URL}/analyze`,
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                const response = await fetch(`${API_BASE_URL}/analyze`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                const responseText = await response.text();
+                console.log('Полученный ответ:', responseText);
+
+                if (!response.ok) {
+                    let errorData;
+                    try {
+                        errorData = JSON.parse(responseText);
+                    } catch (e) {
+                        throw new Error(`Ошибка сервера: ${response.status}. Ответ: ${responseText}`);
+                    }
+                    throw new Error(errorData.error || `Ошибка сервера: ${response.status}`);
+                }
+
+                const data = JSON.parse(responseText);
+                
+                if (!data || typeof data !== 'object') {
+                    throw new Error('Неверный формат полученных данных');
+                }
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                processDataBeforeDisplay(data, hoursBack);
+                currentData = data;
+                updateDashboard(data);
+                
+            } catch (error) {
+                console.error('Ошибка загрузки:', error);
+                showError(error.message || 'Произошла ошибка при загрузке данных');
+            } finally {
+                hideLoadingModal();
+            }
+        }
+
         // Обработка данных перед отображением
         function processDataBeforeDisplay(data, hoursBack) {
             // Форматируем даты
             if (data.analysis_period) {
                 data.analysis_period.hours_back = hoursBack;
                 
-                // Для 24 часов используем текущую дату
                 const now = new Date();
                 const endDate = new Date(now);
                 const startDate = new Date(now);
@@ -619,13 +688,11 @@
             // Обрабатываем топ постов
             if (data.top_posts) {
                 data.top_posts.forEach(post => {
-                    // Исправляем NaN значения
                     if (isNaN(post.views)) post.views = 0;
                     if (isNaN(post.reactions)) post.reactions = 0;
                     if (isNaN(post.comments)) post.comments = 0;
                     if (isNaN(post.forwards)) post.forwards = 0;
                     
-                    // Вычисляем ER
                     const totalInteractions = post.reactions + post.comments + post.forwards;
                     post.er = post.views > 0 ? Math.round(totalInteractions / post.views * 100) : 0;
                 });
@@ -633,54 +700,6 @@
             
             // Обрабатываем случаи отсутствия данных
             data.emptyData = data.summary?.total_posts === 0;
-        }
-
-        // Основная функция загрузки данных
-        async function loadData(hoursBack = 24) {
-            try {
-                const periodText = getPeriodText(hoursBack);
-                document.getElementById('analysis-period').textContent = `Загрузка данных за ${periodText}...`;
-                
-                // Показываем попап только если приветственный экран скрыт
-                if (document.getElementById('welcome-screen').classList.contains('hidden')) {
-                    showLoadingModal(`Загружаю данные за ${periodText}...`);
-                }
-                
-                const response = await fetch(`${API_BASE_URL}/analyze`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        channel_username: CHANNEL_USERNAME,
-                        hours_back: hoursBack
-                    })
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`Ошибка сервера: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-                
-                // Корректируем данные перед отображением
-                processDataBeforeDisplay(data, hoursBack);
-                
-                currentData = data;
-                
-                // Обновляем интерфейс
-                updateDashboard(data);
-                
-            } catch (error) {
-                console.error('Ошибка загрузки:', error);
-                showError(error.message);
-            } finally {
-                hideLoadingModal();
-            }
         }
 
         // Обновление интерфейса
@@ -1011,7 +1030,17 @@
         // Обработчики событий
         document.getElementById('period-select').addEventListener('change', function() {
             const hours = parseInt(this.value);
+            if (isNaN(hours)) return;
+            
             if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+            
+            // Сбрасываем вкладки в состояние загрузки
+            showLoading();
+            
+            // Показываем попап загрузки
+            showLoadingModal(`Загружаю данные за ${getPeriodText(hours)}...`);
+            
+            // Загружаем данные
             loadData(hours);
         });
 
@@ -1022,22 +1051,33 @@
         });
 
         // Обработчик кнопки "Провести анализ канала"
-        document.getElementById('start-analysis').addEventListener('click', function() {
+        document.getElementById('start-analysis').addEventListener('click', async function() {
             if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
             
-            // 1. Скрываем экран приветствия
-            document.getElementById('welcome-screen').classList.add('hidden');
-            
-            // 2. Показываем основной интерфейс
-            const mainContent = document.querySelector('.main-content');
-            mainContent.style.display = 'block';
-            mainContent.classList.remove('visible');
-            
-            // 3. Показываем попап загрузки
-            showLoadingModal("Подготавливаю анализ...");
-            
-            // 4. Загружаем данные
-            loadData(24);
+            try {
+                // Сбрасываем предыдущие данные
+                currentData = null;
+                
+                // Скрываем экран приветствия
+                document.getElementById('welcome-screen').classList.add('hidden');
+                
+                // Показываем основной интерфейс
+                const mainContent = document.querySelector('.main-content');
+                mainContent.style.display = 'block';
+                mainContent.classList.remove('visible');
+                
+                // Сбрасываем вкладки в состояние загрузки
+                showLoading();
+                
+                // Показываем попап загрузки
+                showLoadingModal("Подготавливаю анализ...");
+                
+                // Загружаем данные
+                await loadData(24);
+            } catch (error) {
+                console.error('Ошибка в обработчике кнопки:', error);
+                showError('Произошла ошибка при запуске анализа');
+            }
         });
 
         tg.onEvent('themeChanged', () => location.reload());
