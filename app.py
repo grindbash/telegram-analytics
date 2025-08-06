@@ -669,14 +669,33 @@ def health_check():
 
 # Новое название endpoint и функции
 @app.route('/analyze', methods=['POST'])
-def perform_analysis():  # Новое имя функции
+def perform_analysis():
     try:
-        data = request.get_json()
+        # Проверяем, есть ли данные
+        if not request.data:
+            return jsonify({'error': 'No data provided'}), 400
+            
+        # Логируем сырые данные для отладки
+        raw_data = request.data.decode('utf-8')
+        logger.info(f"Received raw data: {raw_data}")
+        
+        try:
+            data = request.get_json()
+        except Exception as e:
+            logger.error(f"JSON parsing error: {str(e)}")
+            return jsonify({'error': 'Invalid JSON format'}), 400
+        
         channel_identifier = data.get('channel_username') or data.get('channel_id')
         hours_back = data.get('hours_back', 24)
         
         if not channel_identifier:
             return jsonify({'error': 'Не указан username или ID канала'}), 400
+        
+        # Добавляем проверку типа hours_back
+        try:
+            hours_back = int(hours_back)
+        except (ValueError, TypeError):
+            hours_back = 24
         
         # Запускаем анализ
         future = asyncio.run_coroutine_threadsafe(
