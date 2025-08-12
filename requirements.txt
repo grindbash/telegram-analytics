@@ -3,7 +3,7 @@ Flask==2.3.2
 python-dotenv==1.0.0
 
 # Telegram (используем wheel-версию)
-telethon==1.38.0 --only-binary=:all:
+telethon==1.38.0
 
 # Supabase
 supabase==2.18.0
@@ -11,7 +11,7 @@ postgrest-py==0.10.6
 
 # Для PDF
 reportlab==4.0.4
-Pillow==9.5.0 --only-binary=:all:
+Pillow==9.5.0 
 
 # Дополнительно
 requests==2.31.0
