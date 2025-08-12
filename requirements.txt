@@ -3,5 +3,31 @@ flask==3.0.0
 python-dotenv==1.0.0
 requests==2.31.0
 schedule==1.2.0
-pytz==2023.3
+
 asyncio==3.4.3
+# Основные
+Flask==3.0.2
+python-dotenv==1.0.1
+pytz==2024.1
+
+# Telegram
+pyaes==1.6.1
+rsa==4.9
+
+# Supabase (добавьте эти строки)
+supabase-js==2.39.0
+supabase==2.3.1
+postgrest-py==0.10.2
+gotrue==0.4.1
+realtime-py==0.1.2
+storage3==0.7.0
+
+# Для PDF
+reportlab==4.1.0
+Pillow==10.2.0
+
+# Дополнительно
+requests==2.31.0
+python-dateutil==2.9.0
+pycryptodome==3.20.0
+loguru==0.7.2
