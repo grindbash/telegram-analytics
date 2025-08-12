@@ -102,7 +102,7 @@ API_ID = os.getenv('TELEGRAM_API_ID')
 API_HASH = os.getenv('TELEGRAM_API_HASH')
 #PHONE = os.getenv('PHONE')
 #PWD = os.getenv('TG_PWD')
-SESSION_PATH = 'analytics_session'  # Файл сессии в текущей директории
+SESSION_PATH = os.getenv('analytics_session')  # Файл сессии в текущей директории
 
 # Конфигурация Supabase
 SUPABASE_URL = os.getenv('SUPABASE_URL')
