@@ -2,16 +2,16 @@
 Flask==2.3.2
 python-dotenv==1.0.0
 
-# Telegram (используем wheel-версию)
+# Telegram
 telethon==1.38.0
 
-# Supabase
+# Supabase (обновленная версия)
 supabase==2.18.0
-postgrest-py==0.10.6
+postgrest-py==0.12.0  # Обновлено для совместимости
 
 # Для PDF
 reportlab==4.0.4
-Pillow==9.5.0 
+Pillow==9.5.0
 
 # Дополнительно
 requests==2.31.0
