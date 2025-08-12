@@ -7,7 +7,7 @@ telethon==1.38.0 --only-binary=:all:
 
 # Supabase
 supabase==2.18.0
-postgrest-py==1.0.0
+postgrest-py==0.10.6
 
 # Для PDF
 reportlab==4.0.4
