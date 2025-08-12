@@ -98,7 +98,7 @@ app.config['JSON_AS_ASCII'] = False  # Для корректного отобр�
 # Конфигурация
 API_ID = os.getenv('TELEGRAM_API_ID')
 API_HASH = os.getenv('TELEGRAM_API_HASH')
-SESSION_PATH = os.getenv('analytics_session.session')  # Файл сессии в текущей директории
+SESSION_PATH = os.getenv('TELEGRAM_SESSION_FILE','analytics_session.session')  # Файл сессии в текущей директории
 
 # Конфигурация Supabase
 SUPABASE_URL = os.getenv('SUPABASE_URL')
