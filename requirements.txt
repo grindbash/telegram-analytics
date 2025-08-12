@@ -3,10 +3,10 @@ Flask==2.3.2
 python-dotenv==1.0.0
 
 # Telegram (используем wheel-версию)
-telethon==1.34.0 --only-binary=:all:
+telethon==1.38.0 --only-binary=:all:
 
 # Supabase
-supabase==2.21.0
+supabase==2.18.0
 postgrest-py==1.0.0
 
 # Для PDF
