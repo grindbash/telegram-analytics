@@ -16,6 +16,15 @@ from telethon.tl.types import PeerChannel
 from telethon.tl.functions.channels import GetFullChannelRequest
 from dotenv import load_dotenv
 from flask import Flask, send_from_directory, jsonify
+from supabase import create_client, Client
+import requests
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.lib import colors
+from io import BytesIO
+import base64
 
 # Устанавливаем UTF-8 как стандартную кодировку
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
@@ -25,7 +34,7 @@ sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 load_dotenv()
 
 # =============================================
-# КЛАСС ДЛЯ БЕЗОПАСНОГО ЛОГИРОВАНИЯ В WINDOWS
+# НАСТРОЙКА ЛОГИРОВАНИЯ
 # =============================================
 class SafeFileHandler(logging.FileHandler):
     """Обработчик логов с безопасной обработкой Unicode для Windows"""
@@ -39,39 +48,29 @@ class SafeFileHandler(logging.FileHandler):
             stream.write(msg + self.terminator)
             self.flush()
         except UnicodeEncodeError:
-            # Заменяем проблемные символы
             try:
                 msg = self.format(record)
                 safe_msg = msg.encode('utf-8', 'backslashreplace').decode('utf-8')
                 stream.write(safe_msg + self.terminator)
                 self.flush()
-            except Exception as e:
+            except Exception:
                 self.handleError(record)
-        except Exception as e:
+        except Exception:
             self.handleError(record)
 
-# =============================================
-# НАСТРОЙКА ЛОГИРОВАНИЯ С ПОДДЕРЖКОЙ UTF-8
-# =============================================
-
-# Создаем директорию для логов
 os.makedirs('logs', exist_ok=True)
 log_file = 'logs/app.log'
 
-# Удаляем существующие обработчики
 for handler in logging.root.handlers[:]:
     logging.root.removeHandler(handler)
 
-# Создаем обработчики
 file_handler = SafeFileHandler(log_file, encoding='utf-8')
 stream_handler = logging.StreamHandler()
 
-# Форматирование
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 file_handler.setFormatter(formatter)
 stream_handler.setFormatter(formatter)
 
-# Настройка корневого логгера
 logging.basicConfig(
     level=logging.INFO,
     handlers=[file_handler, stream_handler]
@@ -101,7 +100,19 @@ app.config['JSON_AS_ASCII'] = False  # Для корректного отобр�
 # Конфигурация
 API_ID = os.getenv('TELEGRAM_API_ID')
 API_HASH = os.getenv('TELEGRAM_API_HASH')
+#PHONE = os.getenv('PHONE')
+#PWD = os.getenv('TG_PWD')
 SESSION_PATH = 'analytics_session'  # Файл сессии в текущей директории
+
+# Конфигурация Supabase
+SUPABASE_URL = os.getenv('SUPABASE_URL')
+SUPABASE_KEY = os.getenv('SUPABASE_KEY')
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# Конфигурация OpenRouter
+OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
+OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
+AI_MODEL = "deepseek/deepseek-chat-v3-0324:free"  # или "qwen/qwen-72b-chat" для Qwen
 
 class TelegramAnalytics:
     def __init__(self):
@@ -187,6 +198,53 @@ class TelegramAnalytics:
             logger.error(f"Ошибка получения информации о канале: {str(e)}", exc_info=True)
             return None
     
+    async def generate_ai_analysis(self, report_data):
+        """Генерация ИИ анализа через OpenRouter"""
+        try:
+            prompt = f"""
+            Ты эксперт по анализу Telegram каналов. Проанализируй данные и дай рекомендации.
+            
+            Контекст:
+            - Канал: {report_data['channel_info']['title']}
+            - Подписчиков: {report_data['channel_info']['subscribers']}
+            - Период анализа: {report_data['analysis_period']['hours_back']} часов
+            
+            Данные для анализа:
+            {json.dumps(report_data['summary'], indent=2)}
+            
+            Требования:
+            1. Выяви ключевые тенденции
+            2. Дай рекомендации по контенту
+            3. Предложи оптимальное время публикаций
+            4. Оцени вовлеченность аудитории
+            5. Спрогнозируй рост на следующий период
+            """
+            
+            headers = {
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Content-Type": "application/json"
+            }
+            
+            payload = {
+                "model": AI_MODEL,
+                "messages": [
+                    {"role": "system", "content": "Ты профессиональный аналитик Telegram каналов"},
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.7,
+                "max_tokens": 2000
+            }
+            
+            response = requests.post(OPENROUTER_API_URL, headers=headers, json=payload, timeout=60)
+            response.raise_for_status()
+            
+            result = response.json()
+            return result['choices'][0]['message']['content']
+            
+        except Exception as e:
+            logger.error(f"Ошибка ИИ анализа: {str(e)}", exc_info=True)
+            return f"Ошибка при генерации ИИ анализа: {str(e)}"
+ 
     def _get_views(self, message):
         """Безопасное получение количества просмотров"""
         views = getattr(message, 'views', None)
@@ -710,7 +768,244 @@ def perform_analysis():
         logger.error(f"Ошибка при выполнении анализа: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
-# Остальные роуты остаются без изменений
+# Роут для AI анализа + запись в БД
+@app.route('/ai_analyze', methods=['POST'])
+def ai_analyze():
+    """Эндпоинт для ИИ анализа"""
+    try:
+        data = request.get_json()
+        report_data = data.get('report')
+        
+        if not report_data:
+            return jsonify({'error': 'No report data provided'}), 400
+        
+        channel_id = report_data['channel_info']['id']
+        
+        # Проверяем кэш в Supabase
+        cached_response = (
+            supabase.table('ai_reports')
+            .select('*')
+            .eq('channel_id', channel_id)
+            .order('created_at', desc=True)
+            .limit(1)
+            .execute()
+        )
+        
+        # Если есть свежий (менее 1 часа) кэш - возвращаем его
+        if (cached_response.data and 
+            (datetime.now() - datetime.fromisoformat(cached_response.data[0]['created_at'])).total_seconds() < 3600):
+            return jsonify({
+                'ai_report': cached_response.data[0]['report_data'],
+                'cached': True
+            })
+        
+        # Запускаем ИИ анализ
+        future = asyncio.run_coroutine_threadsafe(
+            analytics.generate_ai_analysis(report_data),
+            loop
+        )
+        ai_report = future.result(timeout=300)
+        
+        # Сохраняем в Supabase
+        supabase.table('ai_reports').insert({
+            'channel_id': channel_id,
+            'report_data': ai_report
+        }).execute()
+        
+        # Удаляем старые записи (оставляем 5)
+        supabase.rpc('keep_recent_reports', {
+            'p_channel_id': channel_id,
+            'p_keep_count': 5
+        }).execute()
+        
+        return jsonify({'ai_report': ai_report})
+    
+    except Exception as e:
+        logger.error(f"Ошибка ИИ анализа: {str(e)}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+# Роут для AI анализа - настройки анализа
+@app.route('/ai_settings', methods=['POST'])
+def save_ai_settings():
+    """Сохранение настроек ИИ анализа"""
+    try:
+        data = request.get_json()
+        channel_id = data.get('channel_id')
+        
+        if not channel_id:
+            return jsonify({'error': 'Channel ID is required'}), 400
+        
+        # Upsert настроек
+        supabase.table('ai_settings').upsert({
+            'channel_id': channel_id,
+            'focus_areas': data.get('focus_areas'),
+            'niche': data.get('niche')
+        }).execute()
+        
+        return jsonify({'status': 'success'})
+    
+    except Exception as e:
+        logger.error(f"Ошибка сохранения настроек: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+# Роут для генерации PDF
+@app.route('/generate_pdf', methods=['POST'])
+def generate_pdf():
+    """Генерация PDF отчета"""
+    try:
+        data = request.get_json()
+        report_data = data.get('report')
+        ai_report = data.get('ai_report', '')
+        
+        if not report_data:
+            return jsonify({'error': 'No report data provided'}), 400
+
+        # Создаем буфер для PDF
+        buffer = BytesIO()
+        
+        # Инициализация документа
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=letter,
+            rightMargin=40,
+            leftMargin=40,
+            topMargin=40,
+            bottomMargin=40
+        )
+        
+        # Стили для текста
+        styles = getSampleStyleSheet()
+        styles.add(ParagraphStyle(
+            name='Center',
+            alignment=TA_CENTER,
+            fontSize=14,
+            spaceAfter=20
+        ))
+        styles.add(ParagraphStyle(
+            name='Body',
+            alignment=TA_LEFT,
+            fontSize=10,
+            leading=14,
+            spaceAfter=12
+        ))
+        styles.add(ParagraphStyle(
+            name='Header',
+            alignment=TA_LEFT,
+            fontSize=12,
+            textColor=colors.HexColor('#3B82F6'),
+            spaceAfter=10
+        ))
+        styles.add(ParagraphStyle(
+            name='Small',
+            alignment=TA_LEFT,
+            fontSize=8,
+            textColor=colors.grey,
+            spaceAfter=5
+        ))
+
+        # Элементы документа
+        elements = []
+        
+        # Заголовок
+        elements.append(Paragraph(
+            f"Аналитический отчет: {report_data['channel_info']['title']}",
+            styles['Center']
+        ))
+        
+        # Период анализа
+        elements.append(Paragraph(
+            f"Период анализа: {report_data['analysis_period']['hours_back']} часов "
+            f"({report_data['analysis_period']['start_time']} - {report_data['analysis_period']['end_time']})",
+            styles['Small']
+        ))
+        elements.append(Spacer(1, 20))
+        
+        # Основные метрики
+        metrics = [
+            ['Метрика', 'Значение'],
+            ['Подписчиков', report_data['channel_info']['subscribers']],
+            ['Всего постов', report_data['summary']['total_posts']],
+            ['Всего просмотров', report_data['summary']['total_views']],
+            ['Средний охват', round(report_data['summary']['avg_views_per_post'], 1)],
+            ['ER (просмотры)', f"{report_data['summary']['engagement_rate']['er_views']}%"],
+            ['ER (подписчики)', f"{report_data['summary']['engagement_rate']['er_subscribers']}%"]
+        ]
+        
+        metrics_table = Table(metrics, colWidths=[200, 100])
+        metrics_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F3F4F6')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#1F2937')),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB')),
+            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB'))
+        ]))
+        elements.append(metrics_table)
+        elements.append(Spacer(1, 30))
+        
+        # Рекомендации
+        elements.append(Paragraph("Рекомендации", styles['Header']))
+        for rec in report_data.get('recommendations', []):
+            elements.append(Paragraph(f"• {rec}", styles['Body']))
+        elements.append(Spacer(1, 20))
+        
+        # Анализ ИИ
+        if ai_report:
+            elements.append(Paragraph("ИИ Анализ", styles['Header']))
+            for line in ai_report.split('\n'):
+                if line.strip():
+                    elements.append(Paragraph(line.strip(), styles['Body']))
+            elements.append(Spacer(1, 20))
+        
+        # Топ постов
+        if report_data.get('top_posts'):
+            elements.append(Paragraph("Топ постов", styles['Header']))
+            top_posts_data = [
+                ['Дата', 'Просмотры', 'Тип', 'Превью']
+            ]
+            for post in report_data['top_posts']:
+                preview = post['text_preview'][:50] + '...' if len(post['text_preview']) > 50 else post['text_preview']
+                top_posts_data.append([
+                    post['date'],
+                    post['views'],
+                    post['content_type'],
+                    preview
+                ])
+            
+            top_table = Table(top_posts_data, colWidths=[80, 60, 80, 200])
+            top_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F3F4F6')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#1F2937')),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 9),
+                ('FONTSIZE', (0, 1), (-1, -1), 8),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB')),
+                ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB'))
+            ]))
+            elements.append(top_table)
+        
+        # Создаем PDF
+        doc.build(elements)
+        
+        # Подготовка ответа
+        buffer.seek(0)
+        pdf_data = buffer.getvalue()
+        buffer.close()
+        
+        return jsonify({
+            'pdf_base64': base64.b64encode(pdf_data).decode('utf-8'),
+            'filename': f"{report_data['channel_info']['title']}_report.pdf"
+        })
+    
+    except Exception as e:
+        logger.error(f"Ошибка генерации PDF: {str(e)}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
 
 # Отдача фронтенда
 @app.route('/')
@@ -785,7 +1080,7 @@ def find_channel():
 
 if __name__ == '__main__':
     try:
-        # Инициализируем клиент Telegram
+        # Инициализация клиента Telegram
         logger.info("Инициализация Telegram клиента...")
         future = asyncio.run_coroutine_threadsafe(analytics.init_client(), loop)
         init_result = future.result(timeout=30)
@@ -794,12 +1089,20 @@ if __name__ == '__main__':
             logger.error("Не удалось инициализировать Telegram клиент")
             sys.exit(1)
             
-        # Запускаем Flask
+        # Проверка подключения к Supabase
+        logger.info("Проверка подключения к Supabase...")
+        try:
+            supabase.table('ai_reports').select('*').limit(1).execute()
+            logger.info("Подключение к Supabase успешно")
+        except Exception as e:
+            logger.error(f"Ошибка подключения к Supabase: {str(e)}")
+            raise
+        
+        # Запуск Flask
         logger.info("Запуск Flask приложения...")
         app.run(host='0.0.0.0', port=5050, debug=False, use_reloader=False)
     except Exception as e:
         logger.error(f"Ошибка запуска приложения: {str(e)}", exc_info=True)
     finally:
-        # Корректное завершение цикла событий
         logger.info("Остановка цикла событий...")
         loop.call_soon_threadsafe(loop.stop)
