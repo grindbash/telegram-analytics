@@ -12,7 +12,6 @@ pyaes==1.6.1
 rsa==4.9
 
 # Supabase (добавьте эти строки)
-supabase-js==2.39.0
 supabase==2.3.1
 postgrest-py==0.10.2
 gotrue==0.4.1
