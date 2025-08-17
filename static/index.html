@@ -693,18 +693,29 @@
 
     <script>
         // Инициализация Telegram WebApp
-        const tg = window.Telegram.WebApp;
-        tg.ready();
-        tg.expand();
+        const tg = window.Telegram?.WebApp;
+        if (tg) {
+            tg.ready();
+            tg.expand();
+        }
 
         // Установка цветов темы
-        document.documentElement.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color || '#ffffff');
-        document.documentElement.style.setProperty('--tg-theme-text-color', tg.themeParams.text_color || '#000000');
-        document.documentElement.style.setProperty('--tg-theme-button-color', tg.themeParams.button_color || '#3390ec');
-        document.documentElement.style.setProperty('--tg-theme-button-text-color', tg.themeParams.button_text_color || '#ffffff');
-        document.documentElement.style.setProperty('--tg-theme-secondary-bg-color', tg.themeParams.secondary_bg_color || '#f8f9fa');
-        document.documentElement.style.setProperty('--tg-theme-hint-color', tg.themeParams.hint_color || '#999999');
+        function applyTheme() {
+            const bgColor = tg?.themeParams?.bg_color || '#ffffff';
+            const textColor = tg?.themeParams?.text_color || '#000000';
+            const buttonColor = tg?.themeParams?.button_color || '#3390ec';
+            const buttonTextColor = tg?.themeParams?.button_text_color || '#ffffff';
+            const secondaryBgColor = tg?.themeParams?.secondary_bg_color || '#f8f9fa';
+            const hintColor = tg?.themeParams?.hint_color || '#999999';
 
+            document.documentElement.style.setProperty('--tg-theme-bg-color', bgColor);
+            document.documentElement.style.setProperty('--tg-theme-text-color', textColor);
+            document.documentElement.style.setProperty('--tg-theme-button-color', buttonColor);
+            document.documentElement.style.setProperty('--tg-theme-button-text-color', buttonTextColor);
+            document.documentElement.style.setProperty('--tg-theme-secondary-bg-color', secondaryBgColor);
+            document.documentElement.style.setProperty('--tg-theme-hint-color', hintColor);
+        }
+		
         // Глобальные переменные
         let contentChart, timeChart;
         let currentData = null;
@@ -712,7 +723,7 @@
         let currentChannel = null;
         const API_BASE_URL = 'https://telegram-analytics-t6pf.onrender.com';
 
-		// Функция для определения времени суток
+        // Функция для определения времени суток
         function getTimeOfDay() {
             const hours = new Date().getHours();
             if (hours >= 5 && hours < 12) return 'утро';
@@ -721,7 +732,7 @@
             return 'ночь';
         }
 
-        // Исправленная функция приветствия
+        // Функция для получения приветствия
         function getGreeting() {
             const time = getTimeOfDay();
             const firstName = tg?.initDataUnsafe?.user?.first_name || 'друг';
@@ -734,7 +745,7 @@
                 default: return `Привет, ${firstName}!`;
             }
         }
-
+		
         // Функция показа модального окна загрузки
         function showLoadingModal(text) {
             const loadingModal = document.getElementById('loading-modal');
@@ -766,7 +777,7 @@
                 mainContent.classList.add('visible');
             }, 50);
         }
-
+		
         // Получить цвет для ER в зависимости от значения
         function getERColor(value) {
             if (value === 0 || value === null) return 'er-unknown';
@@ -1455,13 +1466,14 @@
             }
         });
 
+        // Функция инициализации обработчиков событий
         function initEventListeners() {
             // Обработчик кнопки "Выбрать канал для анализа"
             document.getElementById('start-analysis').addEventListener('click', function() {
                 console.log('Start analysis button clicked');
                 
                 try {
-                    if (tg && tg.HapticFeedback) {
+                    if (tg?.HapticFeedback) {
                         tg.HapticFeedback.impactOccurred('light');
                     }
                     
@@ -1471,76 +1483,77 @@
                     document.getElementById('channel-search').focus();
                 } catch (e) {
                     console.error('Error in start-analysis:', e);
-                    // Fallback
+                    // Fallback для браузерного тестирования
                     document.getElementById('welcome-screen').classList.add('hidden');
                     document.getElementById('channel-modal').style.display = 'flex';
                     document.getElementById('channel-search').focus();
                 }
             });
 
-        // Обработчик кнопки "Сменить канал"
-        document.getElementById('change-channel').addEventListener('click', function() {
-            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-            
-            // Показываем экран поиска каналов
-            document.querySelector('.main-content').style.display = 'none';
-            document.getElementById('channel-modal').style.display = 'flex';
-            document.getElementById('channel-search').focus();
-        });
+            // Обработчик кнопки "Сменить канал"
+            document.getElementById('change-channel')?.addEventListener('click', function() {
+                if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+                
+                // Показываем экран поиска каналов
+                document.querySelector('.main-content').style.display = 'none';
+                document.getElementById('channel-modal').style.display = 'flex';
+                document.getElementById('channel-search').focus();
+            });
 
-        // Обработчик кнопки "Найти каналы"
-        document.getElementById('search-button').addEventListener('click', function() {
-            const query = document.getElementById('channel-search').value.trim();
-            if (query) {
-                searchChannels(query);
-            }
-        });
-
-        // Обработчик поля поиска (по нажатию Enter)
-        document.getElementById('channel-search').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                const query = this.value.trim();
+            // Обработчик кнопки "Найти каналы"
+            document.getElementById('search-button')?.addEventListener('click', function() {
+                const query = document.getElementById('channel-search').value.trim();
                 if (query) {
                     searchChannels(query);
                 }
-            }
-        });
-		
-	    // Обработчик для прямого перехода по username
-		document.getElementById('direct-link').addEventListener('click', function() {
-			const username = document.getElementById('channel-search').value.trim();
-			if (username) {
-				// Удаляем символ @ если он есть
-				const cleanUsername = username.startsWith('@') ? username.substring(1) : username;
-				
-				selectChannel({
-					id: 0,  // Временный ID, будет заменен при реальном анализе
-					title: cleanUsername,
-					username: cleanUsername,
-					is_channel: true
-				});
-			} else {
-				if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
-				alert('Пожалуйста, введите username канала');
-			}
-		});
+            });
 
+            // Обработчик поля поиска (по нажатию Enter)
+            document.getElementById('channel-search')?.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    const query = this.value.trim();
+                    if (query) {
+                        searchChannels(query);
+                    }
+                }
+            });
+            
+            // Обработчик для прямого перехода по username
+            document.getElementById('direct-link')?.addEventListener('click', function() {
+                const username = document.getElementById('channel-search').value.trim();
+                if (username) {
+                    // Удаляем символ @ если он есть
+                    const cleanUsername = username.startsWith('@') ? username.substring(1) : username;
+                    
+                    selectChannel({
+                        id: 0,  // Временный ID
+                        title: cleanUsername,
+                        username: cleanUsername,
+                        is_channel: true
+                    });
+                } else {
+                    if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
+                    alert('Пожалуйста, введите username канала');
+                }
+            });
 
-        // Обработчик кнопки "Обновить данные"
-        document.getElementById('refresh-data').addEventListener('click', function() {
-            const hours = parseInt(document.getElementById('period-select').value) || 24;
-            loadData(hours);
-        });
+            // Обработчик кнопки "Обновить данные"
+            document.getElementById('refresh-data')?.addEventListener('click', function() {
+                const hours = parseInt(document.getElementById('period-select').value) || 24;
+                loadData(hours);
+            });
 
-        // Обработчик кнопки "Скачать PDF"
-        document.getElementById('download-pdf').addEventListener('click', function() {
-            generatePDF();
-        });
+            // Обработчик кнопки "Скачать PDF"
+            document.getElementById('download-pdf')?.addEventListener('click', function() {
+                generatePDF();
+            });
+        }
 
-        tg.onEvent('themeChanged', () => location.reload());
-
-        // Инициализация при загрузке документа
+        // Инициализация приложения
         document.addEventListener('DOMContentLoaded', function() {
+            // Применяем тему Telegram
+            applyTheme();
+            
             // Устанавливаем приветствие с именем пользователя
             document.getElementById('greeting').textContent = getGreeting();
             
@@ -1551,11 +1564,14 @@
             document.getElementById('analysis-period').textContent = 'Выберите период анализа';
 
             // Инициализируем обработчики событий
-            initEventListeners(); // Ключевое исправление!
+            initEventListeners();
         });
 
         // Запуск приложения
-        tg.ready();
+        if (tg) {
+            tg.ready();
+            tg.onEvent('themeChanged', applyTheme);
+        }
     </script>
 </body>
 </html>
