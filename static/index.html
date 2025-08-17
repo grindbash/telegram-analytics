@@ -751,14 +751,14 @@
             const loadingModal = document.getElementById('loading-modal');
             const loadingText = document.getElementById('loading-text');
             
-            loadingText.textContent = text;
-            loadingModal.style.display = 'block';
+            if (loadingText) loadingText.textContent = text;
+            if (loadingModal) loadingModal.style.display = 'block';
         }
 
         // Функция скрытия модального окна
         function hideLoadingModal() {
             const loadingModal = document.getElementById('loading-modal');
-            loadingModal.style.display = 'none';
+            if (loadingModal) loadingModal.style.display = 'none';
         }
 
         // Функция получения текста периода
@@ -774,7 +774,7 @@
         function showMainContent() {
             const mainContent = document.querySelector('.main-content');
             setTimeout(() => {
-                mainContent.classList.add('visible');
+                if (mainContent) mainContent.classList.add('visible');
             }, 50);
         }
 		
@@ -801,7 +801,8 @@
                 }
                 
                 const periodText = getPeriodText(hoursBack);
-                document.getElementById('analysis-period').textContent = `Загрузка данных за ${periodText}...`;
+                const periodElement = document.getElementById('analysis-period');
+                if (periodElement) periodElement.textContent = `Загрузка данных за ${periodText}...`;
                 
                 if (document.getElementById('welcome-screen').classList.contains('hidden')) {
                     showLoadingModal(`Загружаю данные за ${periodText}...`);
@@ -858,6 +859,7 @@
         function processDataBeforeDisplay(data, hoursBack) {
             // Форматируем даты
             if (data.analysis_period) {
+                data.analysis_period = data.analysis_period || {};
                 data.analysis_period.hours_back = hoursBack;
                 
                 const now = new Date();
@@ -909,11 +911,15 @@
         }
 
         function updateHeader(data) {
-            document.getElementById('channel-name').textContent = data.channel_info?.title || currentChannel?.title || 'Неизвестный канал';
+            const channelName = document.getElementById('channel-name');
+            if (channelName) channelName.textContent = data.channel_info?.title || currentChannel?.title || 'Неизвестный канал';
+            
             if (data.analysis_period) {
                 const periodText = getPeriodText(data.analysis_period.hours_back);
-                document.getElementById('analysis-period').textContent = 
-                    `Анализ за ${periodText}: ${data.analysis_period.start_time} - ${data.analysis_period.end_time}`;
+                const periodElement = document.getElementById('analysis-period');
+                if (periodElement) {
+                    periodElement.textContent = `Анализ за ${periodText}: ${data.analysis_period.start_time} - ${data.analysis_period.end_time}`;
+                }
             }
         }
 
@@ -1147,8 +1153,11 @@
                 </div>
             `;
             
-            document.getElementById('request-ai')?.addEventListener('click', requestAIAnalysis);
-            document.getElementById('regenerate-ai')?.addEventListener('click', requestAIAnalysis);
+            const requestBtn = document.getElementById('request-ai');
+            if (requestBtn) requestBtn.addEventListener('click', requestAIAnalysis);
+            
+            const regenerateBtn = document.getElementById('regenerate-ai');
+            if (regenerateBtn) regenerateBtn.addEventListener('click', requestAIAnalysis);
         }
 
         // Инициализация графиков
@@ -1175,7 +1184,7 @@
                         legend: {
                             position: 'bottom',
                             labels: {
-                                color: tg.themeParams.text_color || '#000000'
+                                color: (tg && tg.themeParams.text_color) ? tg.themeParams.text_color : '#000000'
                             }
                         }
                     }
@@ -1196,11 +1205,11 @@
                     datasets: [{
                         label: 'Просмотры',
                         data: data,
-                        borderColor: tg.themeParams.button_color || '#3390ec',
-                        backgroundColor: `${tg.themeParams.button_color || '#3390ec'}20`,
+                        borderColor: (tg && tg.themeParams.button_color) ? tg.themeParams.button_color : '#3390ec',
+                        backgroundColor: `${(tg && tg.themeParams.button_color) ? tg.themeParams.button_color : '#3390ec'}20`,
                         fill: true,
                         tension: 0.4,
-                        pointBackgroundColor: tg.themeParams.button_color || '#3390ec',
+                        pointBackgroundColor: (tg && tg.themeParams.button_color) ? tg.themeParams.button_color : '#3390ec',
                         pointBorderColor: '#ffffff',
                         pointBorderWidth: 2,
                         pointRadius: 4
@@ -1213,12 +1222,18 @@
                     scales: {
                         y: {
                             beginAtZero: true,
-                            grid: { color: tg.themeParams.hint_color || '#e0e0e0' },
-                            ticks: { color: tg.themeParams.text_color || '#000000' }
+                            grid: { 
+                                color: (tg && tg.themeParams.hint_color) ? tg.themeParams.hint_color : '#e0e0e0' 
+                            },
+                            ticks: { 
+                                color: (tg && tg.themeParams.text_color) ? tg.themeParams.text_color : '#000000' 
+                            }
                         },
                         x: {
                             grid: { display: false },
-                            ticks: { color: tg.themeParams.text_color || '#000000' }
+                            ticks: { 
+                                color: (tg && tg.themeParams.text_color) ? tg.themeParams.text_color : '#000000' 
+                            }
                         }
                     }
                 }
@@ -1239,13 +1254,15 @@
         }
 
         function switchTab(event, tabName) {
-            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
             
             document.querySelectorAll('.tab-content, .tab').forEach(el => {
                 el.classList.remove('active');
             });
             
-            document.getElementById(tabName).classList.add('active');
+            const tabElement = document.getElementById(tabName);
+            if (tabElement) tabElement.classList.add('active');
+            
             event.target.classList.add('active');
             
             // Перерисовываем графики при переключении
@@ -1341,7 +1358,7 @@
                     link.click();
                     document.body.removeChild(link);
                     
-                    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
+                    if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
                 } else {
                     throw new Error(result.error || 'Ошибка генерации PDF');
                 }
@@ -1357,6 +1374,8 @@
 		async function searchChannels(query) {
 			try {
 				const resultsContainer = document.getElementById('search-results');
+				if (!resultsContainer) return;
+				
 				resultsContainer.innerHTML = '<div class="search-result">Идет поиск...</div>';
 				
 				const response = await fetch(`${API_BASE_URL}/find_channel`, {
@@ -1406,16 +1425,12 @@
 				}
 			} catch (error) {
 				console.error('Ошибка поиска каналов:', error);
-				document.getElementById('search-results').innerHTML = `
-					<div class="search-result error">Ошибка: ${error.message || 'Произошла ошибка при поиске'}</div>
-				`;
-				document.getElementById('search-results').innerHTML = `
-					<div class="search-result">
-						<div class="search-result-title">Ищем канал "${query}"...</div>
-						<div class="search-result-username">Это может занять несколько секунд</div>
-					</div>
-				`;
-				`;
+				const resultsContainer = document.getElementById('search-results');
+				if (resultsContainer) {
+					resultsContainer.innerHTML = `
+						<div class="search-result error">Ошибка: ${error.message || 'Произошла ошибка при поиске'}</div>
+					`;
+				}
 			}
 		}
 
@@ -1426,12 +1441,15 @@
             currentAIData = null;
             
             // Скрываем экран выбора канала
-            document.getElementById('channel-modal').style.display = 'none';
+            const channelModal = document.getElementById('channel-modal');
+            if (channelModal) channelModal.style.display = 'none';
             
             // Показываем основной интерфейс
             const mainContent = document.querySelector('.main-content');
-            mainContent.style.display = 'block';
-            mainContent.classList.remove('visible');
+            if (mainContent) {
+                mainContent.style.display = 'block';
+                mainContent.classList.remove('visible');
+            }
             
             // Сбрасываем вкладки в состояние загрузки
             showLoading();
@@ -1444,109 +1462,140 @@
         }
 
         // Обработчики событий
-        document.getElementById('period-select').addEventListener('change', function() {
-            const hours = parseInt(this.value);
-            if (isNaN(hours)) return;
-            
-            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-            
-            // Сбрасываем вкладки в состояние загрузки
-            showLoading();
-            
-            // Показываем попап загрузки
-            showLoadingModal(`Загружаю данные за ${getPeriodText(hours)}...`);
-            
-            // Загружаем данные
-            loadData(hours);
-        });
-
-        document.addEventListener('click', function(e) {
-            if (e.target.classList.contains('haptic-feedback') && tg.HapticFeedback) {
-                tg.HapticFeedback.impactOccurred('light');
-            }
-        });
-
-        // Функция инициализации обработчиков событий
         function initEventListeners() {
             // Обработчик кнопки "Выбрать канал для анализа"
-            document.getElementById('start-analysis').addEventListener('click', function() {
-                console.log('Start analysis button clicked');
-                
-                try {
-                    if (tg?.HapticFeedback) {
-                        tg.HapticFeedback.impactOccurred('light');
+            const startAnalysisBtn = document.getElementById('start-analysis');
+            if (startAnalysisBtn) {
+                startAnalysisBtn.addEventListener('click', function() {
+                    console.log('Start analysis button clicked');
+                    
+                    try {
+                        if (tg?.HapticFeedback) {
+                            tg.HapticFeedback.impactOccurred('light');
+                        }
+                    } catch (e) {
+                        console.error('Haptic feedback error:', e);
                     }
                     
                     // Показываем экран поиска каналов
-                    document.getElementById('welcome-screen').classList.add('hidden');
-                    document.getElementById('channel-modal').style.display = 'flex';
-                    document.getElementById('channel-search').focus();
-                } catch (e) {
-                    console.error('Error in start-analysis:', e);
-                    // Fallback для браузерного тестирования
-                    document.getElementById('welcome-screen').classList.add('hidden');
-                    document.getElementById('channel-modal').style.display = 'flex';
-                    document.getElementById('channel-search').focus();
-                }
-            });
+                    const welcomeScreen = document.getElementById('welcome-screen');
+                    const channelModal = document.getElementById('channel-modal');
+                    
+                    if (welcomeScreen) welcomeScreen.classList.add('hidden');
+                    if (channelModal) channelModal.style.display = 'flex';
+                    
+                    const searchInput = document.getElementById('channel-search');
+                    if (searchInput) searchInput.focus();
+                });
+            }
 
             // Обработчик кнопки "Сменить канал"
-            document.getElementById('change-channel')?.addEventListener('click', function() {
-                if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-                
-                // Показываем экран поиска каналов
-                document.querySelector('.main-content').style.display = 'none';
-                document.getElementById('channel-modal').style.display = 'flex';
-                document.getElementById('channel-search').focus();
-            });
+            const changeChannelBtn = document.getElementById('change-channel');
+            if (changeChannelBtn) {
+                changeChannelBtn.addEventListener('click', function() {
+                    if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+                    
+                    // Показываем экран поиска каналов
+                    const mainContent = document.querySelector('.main-content');
+                    if (mainContent) mainContent.style.display = 'none';
+                    
+                    const channelModal = document.getElementById('channel-modal');
+                    if (channelModal) channelModal.style.display = 'flex';
+                    
+                    const searchInput = document.getElementById('channel-search');
+                    if (searchInput) searchInput.focus();
+                });
+            }
 
             // Обработчик кнопки "Найти каналы"
-            document.getElementById('search-button')?.addEventListener('click', function() {
-                const query = document.getElementById('channel-search').value.trim();
-                if (query) {
-                    searchChannels(query);
-                }
-            });
-
-            // Обработчик поля поиска (по нажатию Enter)
-            document.getElementById('channel-search')?.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    const query = this.value.trim();
+            const searchButton = document.getElementById('search-button');
+            if (searchButton) {
+                searchButton.addEventListener('click', function() {
+                    const searchInput = document.getElementById('channel-search');
+                    if (!searchInput) return;
+                    
+                    const query = searchInput.value.trim();
                     if (query) {
                         searchChannels(query);
                     }
-                }
-            });
+                });
+            }
+
+            // Обработчик поля поиска (по нажатию Enter)
+            const searchInput = document.getElementById('channel-search');
+            if (searchInput) {
+                searchInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        const query = this.value.trim();
+                        if (query) {
+                            searchChannels(query);
+                        }
+                    }
+                });
+            }
             
             // Обработчик для прямого перехода по username
-            document.getElementById('direct-link')?.addEventListener('click', function() {
-                const username = document.getElementById('channel-search').value.trim();
-                if (username) {
-                    // Удаляем символ @ если он есть
-                    const cleanUsername = username.startsWith('@') ? username.substring(1) : username;
+            const directLinkBtn = document.getElementById('direct-link');
+            if (directLinkBtn) {
+                directLinkBtn.addEventListener('click', function() {
+                    const searchInput = document.getElementById('channel-search');
+                    if (!searchInput) return;
                     
-                    selectChannel({
-                        id: 0,  // Временный ID
-                        title: cleanUsername,
-                        username: cleanUsername,
-                        is_channel: true
-                    });
-                } else {
-                    if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
-                    alert('Пожалуйста, введите username канала');
-                }
-            });
+                    const username = searchInput.value.trim();
+                    if (username) {
+                        // Удаляем символ @ если он есть
+                        const cleanUsername = username.startsWith('@') ? username.substring(1) : username;
+                        
+                        selectChannel({
+                            id: 0,  // Временный ID
+                            title: cleanUsername,
+                            username: cleanUsername,
+                            is_channel: true
+                        });
+                    } else {
+                        if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
+                        alert('Пожалуйста, введите username канала');
+                    }
+                });
+            }
 
             // Обработчик кнопки "Обновить данные"
-            document.getElementById('refresh-data')?.addEventListener('click', function() {
-                const hours = parseInt(document.getElementById('period-select').value) || 24;
-                loadData(hours);
-            });
+            const refreshDataBtn = document.getElementById('refresh-data');
+            if (refreshDataBtn) {
+                refreshDataBtn.addEventListener('click', function() {
+                    const periodSelect = document.getElementById('period-select');
+                    const hours = periodSelect ? parseInt(periodSelect.value) || 24 : 24;
+                    loadData(hours);
+                });
+            }
 
             // Обработчик кнопки "Скачать PDF"
-            document.getElementById('download-pdf')?.addEventListener('click', function() {
-                generatePDF();
-            });
+            const downloadPdfBtn = document.getElementById('download-pdf');
+            if (downloadPdfBtn) {
+                downloadPdfBtn.addEventListener('click', function() {
+                    generatePDF();
+                });
+            }
+            
+            // Обработчик выбора периода
+            const periodSelect = document.getElementById('period-select');
+            if (periodSelect) {
+                periodSelect.addEventListener('change', function() {
+                    const hours = parseInt(this.value);
+                    if (isNaN(hours)) return;
+                    
+                    if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+                    
+                    // Сбрасываем вкладки в состояние загрузки
+                    showLoading();
+                    
+                    // Показываем попап загрузки
+                    showLoadingModal(`Загружаю данные за ${getPeriodText(hours)}...`);
+                    
+                    // Загружаем данные
+                    loadData(hours);
+                });
+            }
         }
 
         // Инициализация приложения
@@ -1555,13 +1604,18 @@
             applyTheme();
             
             // Устанавливаем приветствие с именем пользователя
-            document.getElementById('greeting').textContent = getGreeting();
+            const greetingElement = document.getElementById('greeting');
+            if (greetingElement) {
+                greetingElement.textContent = getGreeting();
+            }
             
             // Скрываем основной контент при загрузке
-            document.querySelector('.main-content').style.display = 'none';
+            const mainContent = document.querySelector('.main-content');
+            if (mainContent) mainContent.style.display = 'none';
             
             // Устанавливаем начальное состояние
-            document.getElementById('analysis-period').textContent = 'Выберите период анализа';
+            const periodElement = document.getElementById('analysis-period');
+            if (periodElement) periodElement.textContent = 'Выберите период анализа';
 
             // Инициализируем обработчики событий
             initEventListeners();
