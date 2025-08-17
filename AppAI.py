@@ -1003,13 +1003,11 @@ def find_channel():
         if not query:
             return jsonify({'error': 'Не указан поисковый запрос'}), 400
         
-        # Создаем новый цикл событий для этого запроса
-        new_loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(new_loop)
+        # Получаем глобальный event loop
+        loop = current_app.config['GLOBAL_EVENT_LOOP']
         
-        # Выполняем поиск в новом цикле
-        results = new_loop.run_until_complete(search_channels(query))
-        new_loop.close()
+        # Выполняем поиск в основном цикле событий
+        results = loop.run_until_complete(search_channels(query))
         
         return jsonify({'results': results})
         
@@ -1025,12 +1023,12 @@ async def search_channels(query):
     
     results = []
     async for dialog in analytics.client.iter_dialogs():
-        if query.lower() in dialog.name.lower():
+        if query.lower() in dialog.name.lower() and dialog.is_channel:
             results.append({
                 'id': dialog.id,
                 'title': dialog.name,
                 'username': getattr(dialog.entity, 'username', None),
-                'is_channel': dialog.is_channel
+                'is_channel': True
             })
     return results
 
@@ -1218,6 +1216,8 @@ if __name__ == '__main__':
         # Создаем базовый HTML файл
         #create_basic_html()
         
+        # Сохраняем loop в конфиг приложения
+        app.config['GLOBAL_EVENT_LOOP'] = loop
         # Получаем порт из переменных окружения
         port = int(os.getenv('PORT', 5050))
         

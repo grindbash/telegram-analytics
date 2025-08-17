@@ -1337,8 +1337,8 @@
         // Поиск каналов
 		async function searchChannels(query) {
 			try {
-				const statusEl = document.getElementById('search-status');
-				statusEl.textContent = 'Идет поиск...';
+				const resultsContainer = document.getElementById('search-results');
+				resultsContainer.innerHTML = '<div class="search-result">Идет поиск...</div>';
 				
 				const response = await fetch(`${API_BASE_URL}/find_channel`, {
 					method: 'POST',
@@ -1349,17 +1349,24 @@
 					body: JSON.stringify({ query })
 				});
 
+				const responseText = await response.text();
+				
 				if (!response.ok) {
-					throw new Error(`Ошибка сервера: ${response.status}`);
+					let errorData;
+					try {
+						errorData = JSON.parse(responseText);
+					} catch (e) {
+						throw new Error(`Ошибка сервера: ${response.status}`);
+					}
+					throw new Error(errorData.error || `Ошибка сервера: ${response.status}`);
 				}
 
-				const result = await response.json();
+				const result = JSON.parse(responseText);
 				
 				if (result.error) {
 					throw new Error(result.error);
 				}
 				
-				const resultsContainer = document.getElementById('search-results');
 				resultsContainer.innerHTML = '';
 				
 				if (result.results && result.results.length > 0) {
