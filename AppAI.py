@@ -148,11 +148,22 @@ class TelegramAnalytics:
             # Проверяем существует ли файл сессии
             session_exists = os.path.exists(SESSION_PATH)
             
-            self.client = TelegramClient(
-                SESSION_PATH, 
-                API_ID, 
-                API_HASH
-            )
+            session_str = os.getenv('TELEGRAM_SESSION_STRING')
+            if session_str:
+                from telethon.sessions import StringSession
+                self.client = TelegramClient(
+                    StringSession(session_str),
+                    API_ID,
+                    API_HASH
+                )
+                logger.info("Используется строковая сессия")
+            else:
+                self.client = TelegramClient(
+                    SESSION_PATH, 
+                    API_ID, 
+                    API_HASH
+                )
+                logger.info("Используется файловая сессия")
             
             # Подключаемся к Telegram
             await self.client.connect()
