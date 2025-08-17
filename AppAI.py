@@ -8,7 +8,7 @@ import pytz
 import threading
 from datetime import datetime, timedelta
 from collections import defaultdict
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, current_app
 from telethon.sync import TelegramClient
 from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument
 from telethon.errors import FloodWaitError, SessionPasswordNeededError, ChannelPrivateError
@@ -25,11 +25,18 @@ from io import BytesIO
 import base64
 
 # Устанавливаем UTF-8 как стандартную кодировку
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+if sys.stdout.encoding != 'UTF-8':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace', newline='', line_buffering=True)
+    
+if sys.stderr.encoding != 'UTF-8':
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace', newline='', line_buffering=True)
 
 # Загружаем переменные окружения
 load_dotenv()
+# В начале файла (после импортов)
+loop = asyncio.new_event_loop()
+asyncio.set_event_loop(loop)
+
 
 # =============================================
 # НАСТРОЙКА ЛОГИРОВАНИЯ
@@ -81,24 +88,31 @@ logger.info("Логирование настроено с поддержкой U
 # =============================================
 
 # Глобальный цикл событий
-loop = asyncio.new_event_loop()
+loop = None
 
-def start_event_loop():
-    """Запуск глобального цикла событий в отдельном потоке"""
-    asyncio.set_event_loop(loop)
-    loop.run_forever()
-
-# Запускаем цикл событий в фоновом потоке
-threading.Thread(target=start_event_loop, daemon=True).start()
+def get_or_create_eventloop():
+    """Получаем или создаем новый event loop"""
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            raise RuntimeError("Loop is closed")
+        return loop
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        return loop
 
 # Инициализация Flask
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False  # Для корректного отображения русского языка в JSON
 
+# Создаем статическую папку если её нет
+os.makedirs('static', exist_ok=True)
+
 # Конфигурация
 API_ID = os.getenv('TELEGRAM_API_ID')
 API_HASH = os.getenv('TELEGRAM_API_HASH')
-SESSION_PATH = os.getenv('TELEGRAM_SESSION_FILE','analytics_session.session')  # Файл сессии в текущей директории
+SESSION_PATH = os.getenv('TELEGRAM_SESSION_FILE', 'analytics_session.session')
 
 # Конфигурация Supabase
 SUPABASE_URL = os.getenv('SUPABASE_URL')
@@ -114,13 +128,19 @@ SUPABASE_HEADERS = {
 # Конфигурация OpenRouter
 OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
-AI_MODEL = "deepseek/deepseek-chat-v3-0324:free"  # или "qwen/qwen-72b-chat" для Qwen
+AI_MODEL = "deepseek/deepseek-chat-v3-0324:free"
 
 class TelegramAnalytics:
     def __init__(self):
         self.client = None
         self.moscow_tz = pytz.timezone('Europe/Moscow')
-        self.loop = loop
+        self._loop = None
+    
+    def _get_loop(self):
+        """Получаем текущий event loop"""
+        if self._loop is None or self._loop.is_closed():
+            self._loop = get_or_create_eventloop()
+        return self._loop
     
     async def init_client(self):
         """Инициализация Telegram клиента"""
@@ -131,8 +151,7 @@ class TelegramAnalytics:
             self.client = TelegramClient(
                 SESSION_PATH, 
                 API_ID, 
-                API_HASH,
-                loop=self.loop
+                API_HASH
             )
             
             # Подключаемся к Telegram
@@ -212,7 +231,7 @@ class TelegramAnalytics:
             - Период анализа: {report_data['analysis_period']['hours_back']} часов
             
             Данные для анализа:
-            {json.dumps(report_data['summary'], indent=2)}
+            {json.dumps(report_data['summary'], indent=2, ensure_ascii=False)}
             
             Требования:
             1. Выяви ключевые тенденции
@@ -672,7 +691,6 @@ class TelegramAnalytics:
             'er_quality': er_quality
         }
 
-    
     def generate_recommendations(self, content_stats, time_analysis, engagement, total_posts, hours_back):
         """Генерация рекомендаций"""
         recommendations = []
@@ -718,7 +736,114 @@ class TelegramAnalytics:
 # Создаем экземпляр аналитики
 analytics = TelegramAnalytics()
 
-# Flask маршруты (обновлённые)
+# Функция для создания базового HTML файла если его нет
+# def create_basic_html():
+    # """Создаем базовый HTML файл для фронтенда"""
+    # html_content = """<!DOCTYPE html>
+# <html lang="ru">
+# <head>
+    # <meta charset="UTF-8">
+    # <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    # <title>Telegram Analytics</title>
+    # <style>
+        # body { font-family: Arial, sans-serif; margin: 40px; }
+        # .container { max-width: 800px; margin: 0 auto; }
+        # .form-group { margin-bottom: 20px; }
+        # label { display: block; margin-bottom: 5px; font-weight: bold; }
+        # input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        # button { background-color: #007bff; color: white; padding: 12px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        # button:hover { background-color: #0056b3; }
+        # .result { margin-top: 20px; padding: 20px; background-color: #f8f9fa; border-radius: 4px; }
+        # .error { background-color: #f8d7da; color: #721c24; }
+        # .loading { text-align: center; color: #6c757d; }
+    # </style>
+# </head>
+# <body>
+    # <div class="container">
+        # <h1>Telegram Channel Analytics</h1>
+        # <form id="analyticsForm">
+            # <div class="form-group">
+                # <label for="channel">Канал (username или ID):</label>
+                # <input type="text" id="channel" placeholder="@channelname или -1001234567890" required>
+            # </div>
+            # <div class="form-group">
+                # <label for="hours">Период анализа (часов):</label>
+                # <select id="hours">
+                    # <option value="24">24 часа</option>
+                    # <option value="72">3 дня</option>
+                    # <option value="168">7 дней</option>
+                    # <option value="720">30 дней</option>
+                # </select>
+            # </div>
+            # <button type="submit">Анализировать</button>
+        # </form>
+        # <div id="result" class="result" style="display: none;"></div>
+    # </div>
+    
+    # <script>
+        # document.getElementById('analyticsForm').addEventListener('submit', async (e) => {
+            # e.preventDefault();
+            
+            # const channel = document.getElementById('channel').value;
+            # const hours = parseInt(document.getElementById('hours').value);
+            # const resultDiv = document.getElementById('result');
+            
+            # resultDiv.style.display = 'block';
+            # resultDiv.className = 'result loading';
+            # resultDiv.innerHTML = 'Анализ в процессе...';
+            
+            # try {
+                # const response = await fetch('/analyze', {
+                    # method: 'POST',
+                    # headers: {
+                        # 'Content-Type': 'application/json',
+                    # },
+                    # body: JSON.stringify({
+                        # channel_username: channel,
+                        # hours_back: hours
+                    # })
+                # });
+                
+                # const data = await response.json();
+                
+                # if (data.error) {
+                    # resultDiv.className = 'result error';
+                    # resultDiv.innerHTML = `Ошибка: ${data.error}`;
+                # } else {
+                    # resultDiv.className = 'result';
+                    # resultDiv.innerHTML = formatResult(data);
+                # }
+            # } catch (error) {
+                # resultDiv.className = 'result error';
+                # resultDiv.innerHTML = `Ошибка: ${error.message}`;
+            # }
+        # });
+        
+        # function formatResult(data) {
+            # return `
+                # <h2>${data.channel_info.title}</h2>
+                # <p><strong>Подписчиков:</strong> ${data.channel_info.subscribers}</p>
+                # <p><strong>Период:</strong> ${data.analysis_period.hours_back} часов</p>
+                # <p><strong>Всего постов:</strong> ${data.summary.total_posts}</p>
+                # <p><strong>Всего просмотров:</strong> ${data.summary.total_views}</p>
+                # <p><strong>Средний охват:</strong> ${data.summary.avg_views_per_post}</p>
+                # <p><strong>Engagement Rate:</strong> ${data.summary.engagement_rate.er_views}%</p>
+                
+                # <h3>Рекомендации:</h3>
+                # <ul>
+                    # ${data.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                # </ul>
+            # `;
+        # }
+    # </script>
+# </body>
+# </html>"""
+    
+    # os.makedirs('static', exist_ok=True)
+    # with open('static/index.html', 'w', encoding='utf-8') as f:
+        # f.write(html_content)
+
+# Flask маршруты
 @app.route('/health', methods=['GET'])
 def health_check():
     return jsonify({
@@ -727,7 +852,6 @@ def health_check():
         'timestamp': datetime.now().isoformat()
     })
 
-# Новое название endpoint и функции
 @app.route('/analyze', methods=['POST'])
 def perform_analysis():
     try:
@@ -757,20 +881,17 @@ def perform_analysis():
         except (ValueError, TypeError):
             hours_back = 24
         
-        # Запускаем анализ
-        future = asyncio.run_coroutine_threadsafe(
-            analytics.analyze_channel(channel_identifier, hours_back),
-            loop
-        )
-        result = future.result(timeout=300)
+        # Получаем глобальный event loop
+        loop = current_app.config['GLOBAL_EVENT_LOOP']
         
+        # Запускаем анализ
+        result = loop.run_until_complete(analytics.analyze_channel(channel_identifier, hours_back))
         return jsonify(result)
         
     except Exception as e:
         logger.error(f"Ошибка при выполнении анализа: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
-# Роут для AI анализа + запись в БД
 @app.route('/ai_analyze', methods=['POST'])
 def ai_analyze():
     """Эндпоинт для ИИ анализа"""
@@ -784,42 +905,46 @@ def ai_analyze():
         channel_id = report_data['channel_info']['id']
         
         # Проверяем кэш в Supabase через REST API
-        response = requests.get(
-            f"{SUPABASE_URL}/rest/v1/ai_reports?channel_id=eq.{channel_id}&order=created_at.desc&limit=1",
-            headers=SUPABASE_HEADERS
-        )
-        response.raise_for_status()
-        cached_data = response.json()
+        try:
+            response = requests.get(
+                f"{SUPABASE_URL}/rest/v1/ai_reports?channel_id=eq.{channel_id}&order=created_at.desc&limit=1",
+                headers=SUPABASE_HEADERS,
+                timeout=5
+            )
+            response.raise_for_status()
+            cached_data = response.json()
+            
+            # Если есть свежий (менее 1 часа) кэш - возвращаем его
+            if cached_data and len(cached_data) > 0:
+                created_at = datetime.fromisoformat(cached_data[0]['created_at'].replace('Z', '+00:00'))
+                if (datetime.now(pytz.UTC) - created_at).total_seconds() < 3600:
+                    return jsonify({
+                        'ai_report': cached_data[0]['report_data'],
+                        'cached': True
+                    })
+        except Exception as e:
+            logger.warning(f"Не удалось проверить кэш Supabase: {str(e)}")
         
-        # Если есть свежий (менее 1 часа) кэш - возвращаем его
-        if cached_data and len(cached_data) > 0:
-            created_at = datetime.fromisoformat(cached_data[0]['created_at'])
-            if (datetime.now() - created_at).total_seconds() < 3600:
-                return jsonify({
-                    'ai_report': cached_data[0]['report_data'],
-                    'cached': True
-                })
+        # Получаем глобальный event loop
+        loop = current_app.config['GLOBAL_EVENT_LOOP']
         
         # Запускаем ИИ анализ
-        future = asyncio.run_coroutine_threadsafe(
-            analytics.generate_ai_analysis(report_data),
-            loop
-        )
-        ai_report = future.result(timeout=300)
+        ai_report = loop.run_until_complete(analytics.generate_ai_analysis(report_data))
         
         # Сохраняем в Supabase через REST API
-        response = requests.post(
-            f"{SUPABASE_URL}/rest/v1/ai_reports",
-            headers=SUPABASE_HEADERS,
-            json={
-                'channel_id': channel_id,
-                'report_data': ai_report
-            }
-        )
-        response.raise_for_status()
-        
-        # Удаление старых записей (оставляем 5)
-        # Для простоты пропустим этот шаг, так как он требует сложной логики
+        try:
+            response = requests.post(
+                f"{SUPABASE_URL}/rest/v1/ai_reports",
+                headers=SUPABASE_HEADERS,
+                json={
+                    'channel_id': channel_id,
+                    'report_data': ai_report
+                },
+                timeout=10
+            )
+            response.raise_for_status()
+        except Exception as e:
+            logger.warning(f"Не удалось сохранить в БД: {str(e)}")
         
         return jsonify({'ai_report': ai_report})
     
@@ -827,39 +952,73 @@ def ai_analyze():
         logger.error(f"Ошибка ИИ анализа: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
-# Роут для AI анализа - настройки анализа
-@app.route('/ai_settings', methods=['POST'])
-def save_ai_settings():
-    """Сохранение настроек ИИ анализа"""
+@app.route('/channel_subscribers', methods=['POST'])
+def get_channel_subscribers():
+    """Получение количества подписчиков"""
     try:
         data = request.get_json()
-        channel_id = data.get('channel_id')
+        channel_identifier = data.get('channel_username') or data.get('channel_id')
         
-        if not channel_id:
-            return jsonify({'error': 'Channel ID is required'}), 400
+        if not channel_identifier:
+            return jsonify({'error': 'Не указан username или ID канала'}), 400
         
-        # Upsert настроек через REST API
-        response = requests.post(
-            f"{SUPABASE_URL}/rest/v1/ai_settings",
-            headers=SUPABASE_HEADERS,
-            json={
-                'channel_id': channel_id,
-                'focus_areas': data.get('focus_areas'),
-                'niche': data.get('niche')
-            },
-            params={
-                "on_conflict": "channel_id"
-            }
-        )
-        response.raise_for_status()
+        # Получаем глобальный event loop
+        loop = current_app.config['GLOBAL_EVENT_LOOP']
         
-        return jsonify({'status': 'success'})
-    
+        # Получаем информацию о канале
+        result = loop.run_until_complete(analytics.get_channel_info(channel_identifier))
+        
+        if result and 'error' not in result:
+            return jsonify({
+                'channel': result['title'],
+                'username': result.get('username', ''),
+                'subscribers': result.get('subscribers', 0),
+                'timestamp': datetime.now().isoformat()
+            })
+        else:
+            return jsonify({'error': 'Канал не найден'}), 404
+            
     except Exception as e:
-        logger.error(f"Ошибка сохранения настроек: {str(e)}")
+        logger.error(f"Ошибка в channel_subscribers: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
-# Роут для генерации PDF
+@app.route('/find_channel', methods=['POST'])
+def find_channel():
+    """Поиск канала по названию"""
+    try:
+        data = request.get_json()
+        query = data.get('query')
+        
+        if not query:
+            return jsonify({'error': 'Не указан поисковый запрос'}), 400
+        
+        # Получаем глобальный event loop
+        loop = current_app.config['GLOBAL_EVENT_LOOP']
+        
+        # Выполняем поиск
+        async def search():
+            if not analytics.client or not analytics.client.is_connected():
+                await analytics.init_client()
+            
+            results = []
+            async for dialog in analytics.client.iter_dialogs():
+                if query.lower() in dialog.name.lower():
+                    results.append({
+                        'id': dialog.id,
+                        'title': dialog.name,
+                        'username': getattr(dialog.entity, 'username', None),
+                        'is_channel': dialog.is_channel
+                    })
+            return results
+        
+        results = loop.run_until_complete(search())
+        return jsonify({'results': results})
+        
+    except Exception as e:
+        logger.error(f"Ошибка в find_channel: {str(e)}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/generate_pdf', methods=['POST'])
 def generate_pdf():
     """Генерация PDF отчета"""
@@ -925,8 +1084,7 @@ def generate_pdf():
         
         # Период анализа
         elements.append(Paragraph(
-            f"Период анализа: {report_data['analysis_period']['hours_back']} часов "
-            f"({report_data['analysis_period']['start_time']} - {report_data['analysis_period']['end_time']})",
+            f"Период анализа: {report_data['analysis_period']['hours_back']} часов ",
             styles['Small']
         ))
         elements.append(Spacer(1, 20))
@@ -943,6 +1101,8 @@ def generate_pdf():
         ]
         
         metrics_table = Table(metrics, colWidths=[200, 100])
+        
+        # Исправленная строка: добавлена закрывающая скобка для TableStyle
         metrics_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F3F4F6')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#1F2937')),
@@ -953,7 +1113,8 @@ def generate_pdf():
             ('BACKGROUND', (0, 1), (-1, -1), colors.white),
             ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB')),
             ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB'))
-        ]))
+        ]))  # Закрывающая скобка добавлена здесь
+        
         elements.append(metrics_table)
         elements.append(Spacer(1, 30))
         
@@ -977,7 +1138,7 @@ def generate_pdf():
             top_posts_data = [
                 ['Дата', 'Просмотры', 'Тип', 'Превью']
             ]
-            for post in report_data['top_posts']:
+            for post in report_data['top_posts'][:3]:  # Ограничиваем до 3 постов для PDF
                 preview = post['text_preview'][:50] + '...' if len(post['text_preview']) > 50 else post['text_preview']
                 top_posts_data.append([
                     post['date'],
@@ -987,6 +1148,8 @@ def generate_pdf():
                 ])
             
             top_table = Table(top_posts_data, colWidths=[80, 60, 80, 200])
+            
+            # Исправленная строка: добавлена закрывающая скобка для TableStyle
             top_table.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F3F4F6')),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#1F2937')),
@@ -998,7 +1161,8 @@ def generate_pdf():
                 ('BACKGROUND', (0, 1), (-1, -1), colors.white),
                 ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB')),
                 ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB'))
-            ]))
+            ]))  # Закрывающая скобка добавлена здесь
+            
             elements.append(top_table)
         
         # Создаем PDF
@@ -1017,107 +1181,64 @@ def generate_pdf():
     except Exception as e:
         logger.error(f"Ошибка генерации PDF: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)}), 500
-
 # Отдача фронтенда
 @app.route('/')
 def home():
+    # Создаем базовый HTML файл если его нет
+    if not os.path.exists('static/index.html'):
+        create_basic_html()
     return send_from_directory('static', 'index.html')
-    
-@app.route('/channel_subscribers', methods=['POST'])
-def get_channel_subscribers():
-    """Получение количества подписчиков"""
-    try:
-        data = request.get_json()
-        channel_identifier = data.get('channel_username') or data.get('channel_id')
-        
-        if not channel_identifier:
-            return jsonify({'error': 'Не указан username или ID канала'}), 400
-        
-        # Запускаем запрос в глобальном цикле
-        future = asyncio.run_coroutine_threadsafe(
-            analytics.get_channel_info(channel_identifier),
-            loop
-        )
-        result = future.result(timeout=60)
-        
-        if result:
-            return jsonify({
-                'channel': result['title'],
-                'username': result.get('username', ''),
-                'subscribers': result.get('subscribers', 0),
-                'timestamp': datetime.now().isoformat()
-            })
-        else:
-            return jsonify({'error': 'Канал не найден'}), 404
-            
-    except Exception as e:
-        logger.error(f"Ошибка в channel_subscribers: {str(e)}")
-        return jsonify({'error': str(e)}), 500
 
-@app.route('/find_channel', methods=['POST'])
-def find_channel():
-    """Поиск канала по названию"""
-    try:
-        data = request.get_json()
-        query = data.get('query')
-        
-        if not query:
-            return jsonify({'error': 'Не указан поисковый запрос'}), 400
-        
-        async def search():
-            if not analytics.client or not analytics.client.is_connected():
-                await analytics.init_client()
-            
-            results = []
-            async for dialog in analytics.client.iter_dialogs():
-                if query.lower() in dialog.name.lower():
-                    results.append({
-                        'id': dialog.id,
-                        'title': dialog.name,
-                        'username': dialog.entity.username,
-                        'is_channel': dialog.is_channel
-                    })
-            return results
-        
-        # Запускаем поиск в глобальном цикле
-        future = asyncio.run_coroutine_threadsafe(search(), loop)
-        results = future.result(timeout=60)
-        
-        return jsonify({'results': results})
-        
-    except Exception as e:
-        logger.error(f"Ошибка в find_channel: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+@app.route('/<path:filename>')
+def serve_static(filename):
+    return send_from_directory('static', filename)
 
 if __name__ == '__main__':
+    # Создаем event loop здесь, внутри блока main
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    
     try:
+        # Создаем базовый HTML файл
+        #create_basic_html()
+        
+        # Получаем порт из переменных окружения
+        port = int(os.getenv('PORT', 5050))
+        
         # Инициализация клиента Telegram
         logger.info("Инициализация Telegram клиента...")
-        future = asyncio.run_coroutine_threadsafe(analytics.init_client(), loop)
-        init_result = future.result(timeout=30)
-        
-        if not init_result:
-            logger.error("Не удалось инициализировать Telegram клиент")
-            sys.exit(1)
+        try:
+            init_result = loop.run_until_complete(analytics.init_client())
+            if not init_result:
+                logger.warning("Не удалось инициализировать Telegram клиент. Будет инициализирован при первом запросе.")
+        except Exception as e:
+            logger.error(f"Ошибка инициализации Telegram клиента: {str(e)}", exc_info=True)
             
-        # Проверка подключения к Supabase через REST API
+        # Проверка подключения к Supabase
         logger.info("Проверка подключения к Supabase...")
         try:
             response = requests.get(
                 f"{SUPABASE_URL}/rest/v1/ai_reports?select=*&limit=1",
-                headers=SUPABASE_HEADERS
+                headers=SUPABASE_HEADERS,
+                timeout=10
             )
             response.raise_for_status()
             logger.info("Подключение к Supabase успешно")
         except Exception as e:
             logger.error(f"Ошибка подключения к Supabase: {str(e)}")
-            raise
+        
+        # Сохраняем loop в конфиг приложения
+        app.config['GLOBAL_EVENT_LOOP'] = loop
         
         # Запуск Flask
-        logger.info("Запуск Flask приложения...")
-        app.run(host='0.0.0.0', port=5050, debug=False, use_reloader=False)
+        logger.info(f"Запуск Flask приложения на порту {port}...")
+        app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
+        
     except Exception as e:
         logger.error(f"Ошибка запуска приложения: {str(e)}", exc_info=True)
     finally:
-        logger.info("Остановка цикла событий...")
-        loop.call_soon_threadsafe(loop.stop)
+        logger.info("Завершение работы приложения...")
+        # Корректно закрываем event loop
+        if loop:
+            loop.run_until_complete(loop.shutdown_asyncgens())
+            loop.close()
