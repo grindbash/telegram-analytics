@@ -270,24 +270,32 @@ class TelegramAnalytics:
             }
             
             response = requests.post(OPENROUTER_API_URL, headers=headers, json=payload, timeout=60)
-            try:
-                response.raise_for_status()
-                result = response.json()
-                
-                # Проверяем структуру ответа
-                if 'choices' not in result or not result['choices']:
-                    logger.error(f"Неожиданный ответ от OpenRouter: {result}")
-                    return "Ошибка анализа: неверный формат ответа ИИ-сервиса"
-                
-                return result['choices'][0]['message']['content']
-                
-            except requests.exceptions.HTTPError as e:
-                logger.error(f"HTTP ошибка от OpenRouter: {e.response.status_code} - {e.response.text}")
-                return f"Ошибка ИИ-анализа: {e.response.status_code}"
-            except Exception as e:
-                logger.error(f"Ошибка ИИ анализа: {str(e)}", exc_info=True)
-                return f"Ошибка при генерации ИИ анализа: {str(e)}"
- 
+            
+            # Обработка ответа с проверкой структуры
+            if response.status_code != 200:
+                logger.error(f"OpenRouter API error: {response.status_code} - {response.text}")
+                return f"Ошибка API: {response.status_code}"
+            
+            result = response.json()
+            
+            if 'choices' not in result:
+                logger.error(f"Invalid OpenRouter response: {result}")
+                return "Ошибка: неверный формат ответа ИИ"
+            
+            if not result['choices']:
+                return "ИИ анализ не дал результатов"
+            
+            return result['choices'][0]['message']['content']
+        
+        except requests.exceptions.RequestException as e:
+            logger.error(f"OpenRouter connection error: {str(e)}")
+            return f"Ошибка соединения с ИИ-сервисом: {str(e)}"
+        except Exception as e:
+            logger.error(f"ИИ анализ failed: {str(e)}", exc_info=True)
+            return f"Внутренняя ошибка ИИ анализа: {str(e)}"
+        finally:
+            pass  # Добавляем блок finally для коррекции синтаксиса
+
     def _get_views(self, message):
         """Безопасное получение количества просмотров"""
         views = getattr(message, 'views', None)
