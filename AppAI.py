@@ -995,9 +995,12 @@ def ai_analyze():
         except Exception as e:
             logger.warning(f"Не удалось проверить кэш Supabase: {str(e)}")
         
-        # Запускаем ИИ анализ СИНХРОННО
+        # Получаем глобальный event loop
+        loop = current_app.config['GLOBAL_EVENT_LOOP']
+        
+        # Запускаем ИИ анализ через event loop
         logger.info("Запуск ИИ анализа...")
-        ai_report = analytics.generate_ai_analysis(report_data)
+        ai_report = loop.run_until_complete(analytics.generate_ai_analysis(report_data))
         logger.info("ИИ анализ завершен")
         
         # Сохраняем в Supabase
