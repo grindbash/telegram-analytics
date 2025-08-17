@@ -712,28 +712,28 @@
         let currentChannel = null;
         const API_BASE_URL = 'https://telegram-analytics-t6pf.onrender.com';
 
-        // Функция для определения времени суток
-        function getTimeOfDay() {
-            const hours = new Date().getHours();
-            if (hours >= 5 && hours < 12) return 'утро';
-            if (hours >= 12 && hours < 18) return 'день';
-            if (hours >= 18 && hours < 23) return 'вечер';
-            return 'ночь';
-        }
+		// Функция для определения времени суток
+		function getTimeOfDay() {
+			const hours = new Date().getHours();
+			if (hours >= 5 && hours < 12) return 'утро';
+			if (hours >= 12 && hours < 18) return 'день';
+			if (hours >= 18 && hours < 23) return 'вечер';
+			return 'ночь';
+		}
 
-        // Функция для получения приветствия
-        function getGreeting() {
-            const time = getTimeOfDay();
-            const firstName = tg.initDataUnsafe?.user?.first_name || 'друг';
-            
-            switch(time) {
-                case 'утро': return `Доброе утро, ${firstName}!`;
-                case 'день': return `Добрый день, ${firstName}!`;
-                case 'вечер': return `Добрый вечер, ${firstName}!`;
-                case 'ночь': return `Доброй ночи, ${firstName}!`;
-                default: return `Привет, ${firstName}!`;
-            }
-        }
+		// Функция для получения приветствия
+		function getGreeting() {
+			const time = getTimeOfDay();
+			const firstName = tg?.initDataUnsafe?.user?.first_name || 'друг';
+			
+			switch(time) {
+				case 'утро': return `Доброе утро, ${firstName}!`;
+				case 'день': return `Добрый день, ${firstName}!`;
+				case 'вечер': return `Добрый вечер, ${firstName}!`;
+				case 'ночь': return `Доброй ночи, ${firstName}!`;
+				default: return `Привет, ${firstName}!`;
+			}
+		}
 
         // Функция показа модального окна загрузки
         function showLoadingModal(text) {
@@ -1455,14 +1455,27 @@
             }
         });
 
+		function initEventListeners() {
         // Обработчик кнопки "Выбрать канал для анализа"
         document.getElementById('start-analysis').addEventListener('click', function() {
-            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+            console.log('Start analysis button clicked');
             
-            // Показываем экран поиска каналов
-            document.getElementById('welcome-screen').classList.add('hidden');
-            document.getElementById('channel-modal').style.display = 'flex';
-            document.getElementById('channel-search').focus();
+            try {
+                if (tg && tg.HapticFeedback) {
+                    tg.HapticFeedback.impactOccurred('light');
+                }
+                
+                // Показываем экран поиска каналов
+                document.getElementById('welcome-screen').classList.add('hidden');
+                document.getElementById('channel-modal').style.display = 'flex';
+                document.getElementById('channel-search').focus();
+            } catch (e) {
+                console.error('Error in start-analysis:', e);
+                // Fallback для браузерного тестирования
+                document.getElementById('welcome-screen').classList.add('hidden');
+                document.getElementById('channel-modal').style.display = 'flex';
+                document.getElementById('channel-search').focus();
+            }
         });
 
         // Обработчик кнопки "Сменить канал"
