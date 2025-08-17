@@ -235,23 +235,25 @@ class TelegramAnalytics:
     def generate_ai_analysis(self, report_data):
         """Генерация ИИ анализа через OpenRouter (синхронная)"""
         try:
+            # Упрощенный и более структурированный промпт
             prompt = f"""
-            Ты эксперт по анализу Telegram каналов. Проанализируй данные и дай рекомендации.
+            [Анализ Telegram канала]
+            Название: {report_data['channel_info']['title']}
+            Подписчики: {report_data['channel_info']['subscribers']}
+            Период анализа: {report_data['analysis_period']['hours_back']} часов
             
-            Контекст:
-            - Канал: {report_data['channel_info']['title']}
-            - Подписчиков: {report_data['channel_info']['subscribers']}
-            - Период анализа: {report_data['analysis_period']['hours_back']} часов
+            [Ключевые метрики]
+            - Всего постов: {report_data['summary']['total_posts']}
+            - Общий охват: {report_data['summary']['total_views']}
+            - Средний охват: {report_data['summary']['avg_views_per_post']}
+            - Вовлеченность (ER): {report_data['summary']['engagement_rate']['er_views']}%
             
-            Данные для анализа:
-            {json.dumps(report_data['summary'], indent=2, ensure_ascii=False)}
-            
-            Требования:
-            1. Выяви ключевые тенденции
-            2. Дай рекомендации по контенту
-            3. Предложи оптимальное время публикаций
-            4. Оцени вовлеченность аудитории
-            5. Спрогнозируй рост на следующий период
+            [Задание]
+            Проанализируй эффективность канала и дай рекомендации:
+            1. Выяви основные тренды
+            2. Предложи улучшения контента
+            3. Определи лучшее время публикаций
+            4. Оцени перспективы роста
             """
             
             headers = {
@@ -262,35 +264,61 @@ class TelegramAnalytics:
             payload = {
                 "model": AI_MODEL,
                 "messages": [
-                    {"role": "system", "content": "Ты профессиональный аналитик Telegram каналов"},
-                    {"role": "user", "content": prompt}
+                    {
+                        "role": "system", 
+                        "content": "Ты профессиональный аналитик Telegram каналов. Отвечай кратко и по делу."
+                    },
+                    {
+                        "role": "user", 
+                        "content": prompt
+                    }
                 ],
                 "temperature": 0.7,
-                "max_tokens": 2000
+                "max_tokens": 1500,  # Уменьшаем количество токенов
+                "top_p": 0.9
             }
             
-            # Увеличиваем таймаут до 120 секунд
-            response = requests.post(OPENROUTER_API_URL, headers=headers, json=payload, timeout=120)
+            # Добавляем повторные попытки с экспоненциальной задержкой
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    response = requests.post(
+                        OPENROUTER_API_URL, 
+                        headers=headers, 
+                        json=payload, 
+                        timeout=180  # Увеличиваем таймаут до 3 минут
+                    )
+                    
+                    if response.status_code == 524:
+                        wait_time = 2 ** attempt  # Экспоненциальная задержка
+                        logger.warning(f"OpenRouter timeout (524). Retry {attempt+1}/{max_retries} in {wait_time}s...")
+                        time.sleep(wait_time)
+                        continue
+                    
+                    if response.status_code != 200:
+                        logger.error(f"OpenRouter API error: {response.status_code} - {response.text}")
+                        return f"Ошибка API: {response.status_code}"
+                    
+                    result = response.json()
+                    
+                    if 'choices' not in result:
+                        logger.error(f"Invalid OpenRouter response: {result}")
+                        return "Ошибка: неверный формат ответа ИИ"
+                    
+                    if not result['choices']:
+                        return "ИИ анализ не дал результатов"
+                    
+                    return result['choices'][0]['message']['content']
+                
+                except requests.exceptions.Timeout:
+                    logger.warning(f"OpenRouter timeout. Retry {attempt+1}/{max_retries}...")
+                    continue
+                except requests.exceptions.RequestException as e:
+                    logger.error(f"OpenRouter connection error: {str(e)}")
+                    return f"Ошибка соединения с ИИ-сервисом: {str(e)}"
             
-            # Обработка ответа с проверкой структуры
-            if response.status_code != 200:
-                logger.error(f"OpenRouter API error: {response.status_code} - {response.text}")
-                return f"Ошибка API: {response.status_code}"
-            
-            result = response.json()
-            
-            if 'choices' not in result:
-                logger.error(f"Invalid OpenRouter response: {result}")
-                return "Ошибка: неверный формат ответа ИИ"
-            
-            if not result['choices']:
-                return "ИИ анализ не дал результатов"
-            
-            return result['choices'][0]['message']['content']
+            return "Ошибка: превышено количество попыток запроса к ИИ-сервису"
         
-        except requests.exceptions.RequestException as e:
-            logger.error(f"OpenRouter connection error: {str(e)}")
-            return f"Ошибка соединения с ИИ-сервисом: {str(e)}"
         except Exception as e:
             logger.error(f"ИИ анализ failed: {str(e)}", exc_info=True)
             return f"Внутренняя ошибка ИИ анализа: {str(e)}"
