@@ -21,6 +21,8 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib import colors
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from io import BytesIO
 import base64
 
@@ -268,14 +270,23 @@ class TelegramAnalytics:
             }
             
             response = requests.post(OPENROUTER_API_URL, headers=headers, json=payload, timeout=60)
-            response.raise_for_status()
-            
-            result = response.json()
-            return result['choices'][0]['message']['content']
-            
-        except Exception as e:
-            logger.error(f"Ошибка ИИ анализа: {str(e)}", exc_info=True)
-            return f"Ошибка при генерации ИИ анализа: {str(e)}"
+            try:
+                response.raise_for_status()
+                result = response.json()
+                
+                # Проверяем структуру ответа
+                if 'choices' not in result or not result['choices']:
+                    logger.error(f"Неожиданный ответ от OpenRouter: {result}")
+                    return "Ошибка анализа: неверный формат ответа ИИ-сервиса"
+                
+                return result['choices'][0]['message']['content']
+                
+            except requests.exceptions.HTTPError as e:
+                logger.error(f"HTTP ошибка от OpenRouter: {e.response.status_code} - {e.response.text}")
+                return f"Ошибка ИИ-анализа: {e.response.status_code}"
+            except Exception as e:
+                logger.error(f"Ошибка ИИ анализа: {str(e)}", exc_info=True)
+                return f"Ошибка при генерации ИИ анализа: {str(e)}"
  
     def _get_views(self, message):
         """Безопасное получение количества просмотров"""
@@ -1042,8 +1053,30 @@ async def search_channels(query):
 
 @app.route('/generate_pdf', methods=['POST'])
 def generate_pdf():
-    """Генерация PDF отчета"""
+    """Генерация PDF отчета с поддержкой кириллицы"""
     try:
+        # Регистрация кириллического шрифта
+        try:
+            # Путь к шрифту в статических файлах
+            font_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'fonts')
+            os.makedirs(font_dir, exist_ok=True)
+            font_path = os.path.join(font_dir, 'DejaVuSans.ttf')
+            
+            # Скачиваем шрифт если его нет
+            if not os.path.exists(font_path):
+                logger.info("Скачивание кириллического шрифта...")
+                font_url = "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf"
+                response = requests.get(font_url)
+                with open(font_path, 'wb') as f:
+                    f.write(response.content)
+            
+            pdfmetrics.registerFont(TTFont('DejaVuSans', font_path))
+            base_font = 'DejaVuSans'
+            logger.info("Кириллический шрифт зарегистрирован")
+        except Exception as e:
+            logger.error(f"Ошибка шрифта: {str(e)}")
+            base_font = 'Helvetica'
+
         data = request.get_json()
         report_data = data.get('report')
         ai_report = data.get('ai_report', '')
@@ -1064,34 +1097,43 @@ def generate_pdf():
             bottomMargin=40
         )
         
-        # Стили для текста
+        # Стили для текста с кириллическим шрифтом
         styles = getSampleStyleSheet()
+        
+        # Основные стили с указанием шрифта
         styles.add(ParagraphStyle(
             name='Center',
             alignment=TA_CENTER,
             fontSize=14,
-            spaceAfter=20
+            spaceAfter=20,
+            fontName=base_font
         ))
-        styles.add(ParagraphStyle(
-            name='Body',
-            alignment=TA_LEFT,
-            fontSize=10,
-            leading=14,
-            spaceAfter=12
-        ))
+        
         styles.add(ParagraphStyle(
             name='Header',
             alignment=TA_LEFT,
             fontSize=12,
             textColor=colors.HexColor('#3B82F6'),
-            spaceAfter=10
+            spaceAfter=10,
+            fontName=base_font
         ))
+        
+        styles.add(ParagraphStyle(
+            name='Body',
+            alignment=TA_LEFT,
+            fontSize=10,
+            leading=14,
+            spaceAfter=12,
+            fontName=base_font
+        ))
+        
         styles.add(ParagraphStyle(
             name='Small',
             alignment=TA_LEFT,
             fontSize=8,
             textColor=colors.grey,
-            spaceAfter=5
+            spaceAfter=5,
+            fontName=base_font
         ))
 
         # Элементы документа
@@ -1105,7 +1147,7 @@ def generate_pdf():
         
         # Период анализа
         elements.append(Paragraph(
-            f"Период анализа: {report_data['analysis_period']['hours_back']} часов ",
+            f"Период анализа: {report_data['analysis_period']['hours_back']} часов",
             styles['Small']
         ))
         elements.append(Spacer(1, 20))
@@ -1122,8 +1164,6 @@ def generate_pdf():
         ]
         
         metrics_table = Table(metrics, colWidths=[200, 100])
-        
-        # Исправленная строка: добавлена закрывающая скобка для TableStyle
         metrics_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F3F4F6')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#1F2937')),
@@ -1134,7 +1174,7 @@ def generate_pdf():
             ('BACKGROUND', (0, 1), (-1, -1), colors.white),
             ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB')),
             ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB'))
-        ]))  # Закрывающая скобка добавлена здесь
+        ]))
         
         elements.append(metrics_table)
         elements.append(Spacer(1, 30))
@@ -1159,7 +1199,7 @@ def generate_pdf():
             top_posts_data = [
                 ['Дата', 'Просмотры', 'Тип', 'Превью']
             ]
-            for post in report_data['top_posts'][:3]:  # Ограничиваем до 3 постов для PDF
+            for post in report_data['top_posts'][:3]:
                 preview = post['text_preview'][:50] + '...' if len(post['text_preview']) > 50 else post['text_preview']
                 top_posts_data.append([
                     post['date'],
@@ -1169,8 +1209,6 @@ def generate_pdf():
                 ])
             
             top_table = Table(top_posts_data, colWidths=[80, 60, 80, 200])
-            
-            # Исправленная строка: добавлена закрывающая скобка для TableStyle
             top_table.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F3F4F6')),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#1F2937')),
@@ -1182,7 +1220,7 @@ def generate_pdf():
                 ('BACKGROUND', (0, 1), (-1, -1), colors.white),
                 ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB')),
                 ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB'))
-            ]))  # Закрывающая скобка добавлена здесь
+            ]))
             
             elements.append(top_table)
         
@@ -1215,6 +1253,7 @@ def serve_static(filename):
     return send_from_directory('static', filename)
 
 if __name__ == '__main__':
+    os.makedirs('static/fonts', exist_ok=True)
     # Создаем event loop здесь, внутри блока main
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
