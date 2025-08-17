@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telegram Analytics</title>
+    <title>Telegram Analytics Pro</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
@@ -134,17 +134,66 @@
             border-radius: 12px;
             margin-bottom: 16px;
             text-align: center;
+            position: relative;
+        }
+
+        .channel-selector {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            padding: 4px 8px;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .channel-selector svg {
+            width: 14px;
+            height: 14px;
+            fill: white;
         }
 
         .header h1 {
             font-size: 18px;
             font-weight: 600;
             margin-bottom: 4px;
+            padding-top: 6px;
         }
 
         .header p {
             font-size: 12px;
             opacity: 0.9;
+        }
+
+        .header-actions {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .header-action {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            padding: 4px 12px;
+            color: white;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .header-action svg {
+            width: 14px;
+            height: 14px;
+            fill: white;
         }
 
         .period-selector {
@@ -206,6 +255,14 @@
             padding: 16px;
             margin-bottom: 12px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .card-title {
+            font-size: 16px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .stats-grid {
@@ -324,6 +381,7 @@
             font-size: 12px;
             color: var(--tg-theme-hint-color, #999999);
             margin-bottom: 8px;
+            flex-wrap: wrap;
         }
 
         .post-preview {
@@ -416,6 +474,52 @@
             color: #ef4444;
         }
 
+        .ai-content {
+            background: var(--tg-theme-bg-color, #f8f9fa);
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.5;
+            margin: 16px 0;
+            white-space: pre-wrap;
+        }
+
+        .ai-loader {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .ai-loader img {
+            width: 50px;
+            height: 50px;
+        }
+
+        .ai-actions {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .ai-button {
+            background: var(--tg-theme-button-color, #3390ec);
+            color: var(--tg-theme-button-text-color, white);
+            border: none;
+            border-radius: 12px;
+            padding: 10px 16px;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .ai-button svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
         .er-low {
             color: #ef4444;
         }
@@ -432,6 +536,42 @@
             opacity: 0.6;
         }
 
+        .search-results {
+            width: 100%;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 8px;
+        }
+
+        .search-result {
+            padding: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            transition: background 0.2s;
+            text-align: left;
+        }
+
+        .search-result:last-child {
+            border-bottom: none;
+        }
+
+        .search-result:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .search-result-title {
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .search-result-username {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
         @media (max-width: 480px) {
             .stats-grid {
                 grid-template-columns: 1fr;
@@ -444,6 +584,10 @@
             .container {
                 padding: 8px;
             }
+            
+            .ai-actions {
+                flex-direction: column;
+            }
         }
     </style>
 </head>
@@ -451,7 +595,17 @@
     <div id="welcome-screen" class="welcome-screen">
         <h1 id="greeting" class="welcome-title">Добрый день!</h1>
         <p class="welcome-subtitle">Анализатор статистики Telegram-каналов</p>
-        <button id="start-analysis" class="tg-button haptic-feedback">Провести анализ канала</button>
+        <button id="start-analysis" class="tg-button haptic-feedback">Выбрать канал для анализа</button>
+    </div>
+
+    <div id="channel-modal" class="welcome-screen" style="display: none;">
+        <h1 class="welcome-title">Выберите канал</h1>
+        <div class="search-box">
+            <input type="text" id="channel-search" placeholder="Введите название канала" 
+                   style="width: 100%; padding: 12px; border-radius: 12px; border: none; margin-bottom: 16px; font-size: 16px;">
+            <button id="search-button" class="tg-button haptic-feedback">Найти каналы</button>
+        </div>
+        <div id="search-results" class="search-results"></div>
     </div>
 
     <div id="loading-modal" class="loading-modal">
@@ -464,18 +618,38 @@
     <div class="container main-content">
         <!-- Header -->
         <div class="header">
-            <h1>📊 Аналитика канала</h1>
-            <p id="channel-name">Загрузка...</p>
+            <div class="channel-selector haptic-feedback" id="change-channel">
+                <svg viewBox="0 0 24 24">
+                    <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                </svg>
+                <span>Сменить</span>
+            </div>
+            <h1 id="channel-name">Загрузка...</h1>
+            <p id="analysis-period">Выберите период анализа</p>
             
             <div class="period-selector">
                 <select id="period-select" class="period-select">
                     <option value="24">24 часа</option>
+                    <option value="72">3 дня</option>
                     <option value="168">7 дней</option>
                     <option value="720">30 дней</option>
                 </select>
             </div>
             
-            <p id="analysis-period" style="font-size: 11px; margin-top: 4px;">Выберите период анализа</p>
+            <div class="header-actions">
+                <div class="header-action haptic-feedback" id="refresh-data">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                    </svg>
+                    Обновить
+                </div>
+                <div class="header-action haptic-feedback" id="download-pdf">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                    </svg>
+                    PDF
+                </div>
+            </div>
         </div>
 
         <!-- Navigation Tabs -->
@@ -484,6 +658,7 @@
             <button class="tab haptic-feedback" onclick="switchTab(event, 'content')">📝 Контент</button>
             <button class="tab haptic-feedback" onclick="switchTab(event, 'timing')">⏰ Время</button>
             <button class="tab haptic-feedback" onclick="switchTab(event, 'posts')">🏆 Топ</button>
+            <button class="tab haptic-feedback" onclick="switchTab(event, 'ai')">🤖 ИИ Анализ</button>
         </div>
 
         <!-- Tab Contents -->
@@ -500,6 +675,10 @@
         </div>
 
         <div id="posts" class="tab-content">
+            <div class="loading">Загрузка данных...</div>
+        </div>
+
+        <div id="ai" class="tab-content">
             <div class="loading">Загрузка данных...</div>
         </div>
     </div>
@@ -521,8 +700,9 @@
         // Глобальные переменные
         let contentChart, timeChart;
         let currentData = null;
+        let currentAIData = null;
+        let currentChannel = null;
         const API_BASE_URL = 'https://telegram-analytics-t6pf.onrender.com';
-        const CHANNEL_USERNAME = 'lityaginasvetlanalive'; // Убедитесь, что это правильный username
 
         // Функция для определения времени суток
         function getTimeOfDay() {
@@ -565,6 +745,7 @@
         // Функция получения текста периода
         function getPeriodText(hours) {
             if (hours === 24) return '24 часа';
+            if (hours === 72) return '3 дня';
             if (hours === 168) return '7 дней';
             if (hours === 720) return '30 дней';
             return `${hours} часов`;
@@ -596,6 +777,10 @@
         // Основная функция загрузки данных
         async function loadData(hoursBack = 24) {
             try {
+                if (!currentChannel) {
+                    throw new Error('Канал не выбран');
+                }
+                
                 const periodText = getPeriodText(hoursBack);
                 document.getElementById('analysis-period').textContent = `Загрузка данных за ${periodText}...`;
                 
@@ -603,33 +788,17 @@
                     showLoadingModal(`Загружаю данные за ${periodText}...`);
                 }
                 
-                // Формируем корректное тело запроса
-                const requestData = {
-                    channel_username: CHANNEL_USERNAME,
-                    hours_back: hoursBack
-                };
-
-                console.log('Отправляемый запрос:', {
-                    url: `${API_BASE_URL}/analyze`,
+                const response = await fetch(`${API_BASE_URL}/analyze`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Accept': 'application/json'
                     },
-                    body: JSON.stringify(requestData)
+                    body: JSON.stringify({
+                        channel_username: currentChannel.username || currentChannel.id,
+                        hours_back: hoursBack
+                    })
                 });
-
-				const response = await fetch(`${API_BASE_URL}/analyze`, {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-						'Accept': 'application/json'
-					},
-					body: JSON.stringify({
-						channel_username: CHANNEL_USERNAME,
-						hours_back: hoursBack
-					})
-				});
 
                 const responseText = await response.text();
                 console.log('Полученный ответ:', responseText);
@@ -712,6 +881,7 @@
             updateContentTab(data);
             updateTimingTab(data);
             updatePostsTab(data);
+            updateAITab(data);
             
             // Показываем основной контент после обновления данных
             if (!data.emptyData) {
@@ -720,7 +890,7 @@
         }
 
         function updateHeader(data) {
-            document.getElementById('channel-name').textContent = data.channel_info?.title || CHANNEL_USERNAME;
+            document.getElementById('channel-name').textContent = data.channel_info?.title || currentChannel?.title || 'Неизвестный канал';
             if (data.analysis_period) {
                 const periodText = getPeriodText(data.analysis_period.hours_back);
                 document.getElementById('analysis-period').textContent = 
@@ -813,14 +983,14 @@
             
             tab.innerHTML = `
                 <div class="card">
-                    <h3 style="margin-bottom: 16px; font-size: 16px;">📊 Типы контента</h3>
+                    <h3 class="card-title">📊 Типы контента</h3>
                     <div class="chart-container">
                         <canvas id="contentChart"></canvas>
                     </div>
                 </div>
 
                 <div class="card">
-                    <h3 style="margin-bottom: 16px; font-size: 16px;">📈 Статистика контента</h3>
+                    <h3 class="card-title">📈 Статистика контента</h3>
                     <table class="content-table">
                         <thead>
                             <tr>
@@ -881,7 +1051,7 @@
                 </div>
 
                 <div class="card">
-                    <h3 style="margin-bottom: 16px; font-size: 16px;">📅 Активность по часам</h3>
+                    <h3 class="card-title">📅 Активность по часам</h3>
                     <div class="chart-container">
                         <canvas id="timeChart"></canvas>
                     </div>
@@ -921,6 +1091,45 @@
                 </div>
                 `;
             }).join('');
+        }
+
+        function updateAITab(data) {
+            const tab = document.getElementById('ai');
+            if (!tab) return;
+            
+            if (data.emptyData) {
+                tab.innerHTML = '<div class="error">Нет данных для ИИ анализа</div>';
+                return;
+            }
+            
+            tab.innerHTML = `
+                <div class="card">
+                    <h3 class="card-title">🤖 ИИ Анализ канала</h3>
+                    
+                    <div id="ai-content" class="ai-content">
+                        ${currentAIData || 'ИИ анализ еще не выполнен. Нажмите кнопку "Запросить анализ" для получения детальных рекомендаций.'}
+                    </div>
+                    
+                    <div class="ai-actions">
+                        <button id="request-ai" class="ai-button haptic-feedback">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v2h8z"/>
+                            </svg>
+                            Запросить ИИ анализ
+                        </button>
+                        
+                        <button id="regenerate-ai" class="ai-button haptic-feedback" style="background: #8b5cf6; ${!currentAIData ? 'display: none;' : ''}">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                            </svg>
+                            Обновить анализ
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('request-ai')?.addEventListener('click', requestAIAnalysis);
+            document.getElementById('regenerate-ai')?.addEventListener('click', requestAIAnalysis);
         }
 
         // Инициализация графиков
@@ -1026,8 +1235,181 @@
                     updateContentTab(currentData);
                 } else if (tabName === 'timing') {
                     updateTimingTab(currentData);
+                } else if (tabName === 'ai') {
+                    updateAITab(currentData);
                 }
             }
+        }
+
+        // Запрос ИИ анализа
+        async function requestAIAnalysis() {
+            try {
+                if (!currentData) {
+                    throw new Error('Нет данных для анализа');
+                }
+                
+                const aiTab = document.getElementById('ai');
+                if (!aiTab) return;
+                
+                aiTab.innerHTML = `
+                    <div class="ai-loader">
+                        <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcDl1eGJ0Z2F6dW1yZzR0dWZzZ3R5Z2Z6eGZ6eGZ6eGZ6eGZ6eGZ6eCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7bu3XilJ5BOiSGic/giphy.gif" alt="AI Thinking">
+                        <p>ИИ анализирует данные...</p>
+                    </div>
+                `;
+                
+                showLoadingModal("ИИ анализирует данные...");
+                
+                const response = await fetch(`${API_BASE_URL}/ai_analyze`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        report: currentData
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    currentAIData = result.ai_report || "ИИ анализ не дал результатов";
+                    updateAITab(currentData);
+                } else {
+                    throw new Error(result.error || 'Ошибка ИИ анализа');
+                }
+            } catch (error) {
+                console.error('Ошибка ИИ анализа:', error);
+                const aiTab = document.getElementById('ai');
+                if (aiTab) {
+                    aiTab.innerHTML = `<div class="error">${error.message}</div>`;
+                }
+            } finally {
+                hideLoadingModal();
+            }
+        }
+
+        // Генерация PDF
+        async function generatePDF() {
+            try {
+                if (!currentData) {
+                    throw new Error('Нет данных для генерации PDF');
+                }
+                
+                showLoadingModal("Генерирую PDF отчет...");
+                
+                const response = await fetch(`${API_BASE_URL}/generate_pdf`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        report: currentData,
+                        ai_report: currentAIData || ''
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    // Скачивание PDF
+                    const link = document.createElement('a');
+                    link.href = `data:application/pdf;base64,${result.pdf_base64}`;
+                    link.download = result.filename;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
+                } else {
+                    throw new Error(result.error || 'Ошибка генерации PDF');
+                }
+            } catch (error) {
+                console.error('Ошибка генерации PDF:', error);
+                alert(`Ошибка: ${error.message}`);
+            } finally {
+                hideLoadingModal();
+            }
+        }
+
+        // Поиск каналов
+        async function searchChannels(query) {
+            try {
+                if (!query || query.length < 3) {
+                    document.getElementById('search-results').innerHTML = '<div class="search-result">Введите не менее 3 символов</div>';
+                    return;
+                }
+                
+                showLoadingModal("Ищу каналы...");
+                
+                const response = await fetch(`${API_BASE_URL}/find_channel`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        query: query
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    const resultsContainer = document.getElementById('search-results');
+                    resultsContainer.innerHTML = '';
+                    
+                    if (result.results && result.results.length > 0) {
+                        result.results.forEach(channel => {
+                            const resultElement = document.createElement('div');
+                            resultElement.className = 'search-result';
+                            resultElement.innerHTML = `
+                                <div class="search-result-title">${channel.title}</div>
+                                <div class="search-result-username">@${channel.username || 'нет username'}</div>
+                            `;
+                            resultElement.addEventListener('click', () => {
+                                selectChannel(channel);
+                            });
+                            resultsContainer.appendChild(resultElement);
+                        });
+                    } else {
+                        resultsContainer.innerHTML = '<div class="search-result">Каналы не найдены</div>';
+                    }
+                } else {
+                    throw new Error(result.error || 'Ошибка поиска каналов');
+                }
+            } catch (error) {
+                console.error('Ошибка поиска каналов:', error);
+                document.getElementById('search-results').innerHTML = `<div class="search-result">${error.message}</div>`;
+            } finally {
+                hideLoadingModal();
+            }
+        }
+
+        // Выбор канала
+        function selectChannel(channel) {
+            currentChannel = channel;
+            currentData = null;
+            currentAIData = null;
+            
+            // Скрываем экран выбора канала
+            document.getElementById('channel-modal').style.display = 'none';
+            
+            // Показываем основной интерфейс
+            const mainContent = document.querySelector('.main-content');
+            mainContent.style.display = 'block';
+            mainContent.classList.remove('visible');
+            
+            // Сбрасываем вкладки в состояние загрузки
+            showLoading();
+            
+            // Показываем попап загрузки
+            showLoadingModal("Загружаю данные канала...");
+            
+            // Загружаем данные
+            loadData(24);
         }
 
         // Обработчики событий
@@ -1053,34 +1435,53 @@
             }
         });
 
-        // Обработчик кнопки "Провести анализ канала"
-        document.getElementById('start-analysis').addEventListener('click', async function() {
+        // Обработчик кнопки "Выбрать канал для анализа"
+        document.getElementById('start-analysis').addEventListener('click', function() {
             if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
             
-            try {
-                // Сбрасываем предыдущие данные
-                currentData = null;
-                
-                // Скрываем экран приветствия
-                document.getElementById('welcome-screen').classList.add('hidden');
-                
-                // Показываем основной интерфейс
-                const mainContent = document.querySelector('.main-content');
-                mainContent.style.display = 'block';
-                mainContent.classList.remove('visible');
-                
-                // Сбрасываем вкладки в состояние загрузки
-                showLoading();
-                
-                // Показываем попап загрузки
-                showLoadingModal("Подготавливаю анализ...");
-                
-                // Загружаем данные
-                await loadData(24);
-            } catch (error) {
-                console.error('Ошибка в обработчике кнопки:', error);
-                showError('Произошла ошибка при запуске анализа');
+            // Показываем экран поиска каналов
+            document.getElementById('welcome-screen').classList.add('hidden');
+            document.getElementById('channel-modal').style.display = 'flex';
+            document.getElementById('channel-search').focus();
+        });
+
+        // Обработчик кнопки "Сменить канал"
+        document.getElementById('change-channel').addEventListener('click', function() {
+            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+            
+            // Показываем экран поиска каналов
+            document.querySelector('.main-content').style.display = 'none';
+            document.getElementById('channel-modal').style.display = 'flex';
+            document.getElementById('channel-search').focus();
+        });
+
+        // Обработчик кнопки "Найти каналы"
+        document.getElementById('search-button').addEventListener('click', function() {
+            const query = document.getElementById('channel-search').value.trim();
+            if (query) {
+                searchChannels(query);
             }
+        });
+
+        // Обработчик поля поиска (по нажатию Enter)
+        document.getElementById('channel-search').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const query = this.value.trim();
+                if (query) {
+                    searchChannels(query);
+                }
+            }
+        });
+
+        // Обработчик кнопки "Обновить данные"
+        document.getElementById('refresh-data').addEventListener('click', function() {
+            const hours = parseInt(document.getElementById('period-select').value) || 24;
+            loadData(hours);
+        });
+
+        // Обработчик кнопки "Скачать PDF"
+        document.getElementById('download-pdf').addEventListener('click', function() {
+            generatePDF();
         });
 
         tg.onEvent('themeChanged', () => location.reload());
