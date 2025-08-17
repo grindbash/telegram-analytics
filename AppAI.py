@@ -232,29 +232,30 @@ class TelegramAnalytics:
             logger.error(f"Ошибка получения информации о канале: {str(e)}", exc_info=True)
             return None
     
-    def generate_ai_analysis(self, report_data):
-        """Генерация ИИ анализа через OpenRouter (синхронная)"""
+    async def generate_ai_analysis(self, report_data):
+        """Генерация ИИ анализа через OpenRouter"""
         try:
-            # Упрощенный и более структурированный промпт
             prompt = f"""
-            [Анализ Telegram канала]
-            Название: {report_data['channel_info']['title']}
-            Подписчики: {report_data['channel_info']['subscribers']}
-            Период анализа: {report_data['analysis_period']['hours_back']} часов
+            Ты эксперт по анализу Telegram каналов. Проанализируй данные и дай рекомендации.
             
-            [Ключевые метрики]
-            - Всего постов: {report_data['summary']['total_posts']}
-            - Общий охват: {report_data['summary']['total_views']}
-            - Средний охват: {report_data['summary']['avg_views_per_post']}
-            - Вовлеченность (ER): {report_data['summary']['engagement_rate']['er_views']}%
+            Контекст:
+            - Канал: {report_data['channel_info']['title']}
+            - Подписчиков: {report_data['channel_info']['subscribers']}
+            - Период анализа: {report_data['analysis_period']['hours_back']} часов
             
-            [Задание]
-            Проанализируй эффективность канала и дай рекомендации:
-            1. Выяви основные тренды
-            2. Предложи улучшения контента
-            3. Определи лучшее время публикаций
-            4. Оцени перспективы роста
+            Данные для анализа:
+            {json.dumps(report_data['summary'], indent=2, ensure_ascii=False)}
+            
+            Требования:
+            1. Выяви ключевые тенденции
+            2. Дай рекомендации по контенту
+            3. Предложи оптимальное время публикаций
+            4. Оцени вовлеченность аудитории
+            5. Спрогнозируй рост на следующий период
             """
+            
+            # Логируем длину промпта
+            logger.info(f"Длина промпта для ИИ: {len(prompt)} символов")
             
             headers = {
                 "Authorization": f"Bearer {OPENROUTER_API_KEY}",
@@ -264,64 +265,56 @@ class TelegramAnalytics:
             payload = {
                 "model": AI_MODEL,
                 "messages": [
-                    {
-                        "role": "system", 
-                        "content": "Ты профессиональный аналитик Telegram каналов. Отвечай кратко и по делу."
-                    },
-                    {
-                        "role": "user", 
-                        "content": prompt
-                    }
+                    {"role": "system", "content": "Ты профессиональный аналитик Telegram каналов"},
+                    {"role": "user", "content": prompt}
                 ],
                 "temperature": 0.7,
-                "max_tokens": 1500,  # Уменьшаем количество токенов
-                "top_p": 0.9
+                "max_tokens": 2000
             }
             
-            # Добавляем повторные попытки с экспоненциальной задержкой
-            max_retries = 3
-            for attempt in range(max_retries):
-                try:
-                    response = requests.post(
-                        OPENROUTER_API_URL, 
-                        headers=headers, 
-                        json=payload, 
-                        timeout=180  # Увеличиваем таймаут до 3 минут
-                    )
-                    
-                    if response.status_code == 524:
-                        wait_time = 2 ** attempt  # Экспоненциальная задержка
-                        logger.warning(f"OpenRouter timeout (524). Retry {attempt+1}/{max_retries} in {wait_time}s...")
-                        time.sleep(wait_time)
-                        continue
-                    
-                    if response.status_code != 200:
-                        logger.error(f"OpenRouter API error: {response.status_code} - {response.text}")
-                        return f"Ошибка API: {response.status_code}"
-                    
-                    result = response.json()
-                    
-                    if 'choices' not in result:
-                        logger.error(f"Invalid OpenRouter response: {result}")
-                        return "Ошибка: неверный формат ответа ИИ"
-                    
-                    if not result['choices']:
-                        return "ИИ анализ не дал результатов"
-                    
-                    return result['choices'][0]['message']['content']
-                
-                except requests.exceptions.Timeout:
-                    logger.warning(f"OpenRouter timeout. Retry {attempt+1}/{max_retries}...")
-                    continue
-                except requests.exceptions.RequestException as e:
-                    logger.error(f"OpenRouter connection error: {str(e)}")
-                    return f"Ошибка соединения с ИИ-сервисом: {str(e)}"
+            logger.info(f"Отправка запроса к OpenRouter: {OPENROUTER_API_URL}")
             
-            return "Ошибка: превышено количество попыток запроса к ИИ-сервису"
-        
+            # Синхронный запрос
+            response = requests.post(
+                OPENROUTER_API_URL,
+                headers=headers,
+                json=payload,
+                timeout=60
+            )
+            
+            # Детальное логирование ответа
+            logger.info(f"Статус ответа OpenRouter: {response.status_code}")
+            logger.info(f"Заголовки ответа: {response.headers}")
+            
+            try:
+                response_data = response.json()
+                logger.info(f"Тело ответа (первые 500 символов): {str(response_data)[:500]}")
+            except json.JSONDecodeError:
+                logger.error(f"Не удалось распарсить JSON: {response.text[:500]}")
+                return "Ошибка: неверный формат ответа ИИ"
+            
+            # Проверяем различные форматы ответа
+            if response.status_code != 200:
+                error_msg = response_data.get('error', {}).get('message', response.text[:200])
+                logger.error(f"OpenRouter API error: {response.status_code} - {error_msg}")
+                return f"Ошибка API: {response.status_code} - {error_msg}"
+            
+            # Проверяем возможные форматы ответа
+            if 'choices' in response_data and response_data['choices']:
+                return response_data['choices'][0]['message']['content']
+            elif 'message' in response_data:
+                return response_data['message']
+            elif 'text' in response_data:
+                return response_data['text']
+            elif 'error' in response_data:
+                return f"Ошибка ИИ: {response_data['error']}"
+            else:
+                logger.error(f"Неожиданный формат ответа: {json.dumps(response_data, indent=2)[:500]}")
+                return "Ошибка: неверный формат ответа ИИ"
+                
         except Exception as e:
-            logger.error(f"ИИ анализ failed: {str(e)}", exc_info=True)
-            return f"Внутренняя ошибка ИИ анализа: {str(e)}"
+            logger.error(f"Ошибка ИИ анализа: {str(e)}", exc_info=True)
+            return f"Ошибка при генерации ИИ анализа: {str(e)}"
         finally:
             pass  # Добавляем блок finally для коррекции синтаксиса
 
@@ -953,7 +946,7 @@ def perform_analysis():
 
 @app.route('/ai_analyze', methods=['POST'])
 def ai_analyze():
-    """Эндпоинт для ИИ анализа"""
+    """Эндпоинт для ИИ анализа с улучшенным логированием"""
     try:
         data = request.get_json()
         report_data = data.get('report')
@@ -961,33 +954,55 @@ def ai_analyze():
         if not report_data:
             return jsonify({'error': 'No report data provided'}), 400
         
+        # Детальное логирование полученных данных
+        logger.info(f"Получен запрос на ИИ анализ для канала: {report_data['channel_info']['title']}")
+        logger.debug(f"ID канала: {report_data['channel_info']['id']}")
+        
         channel_id = report_data['channel_info']['id']
         
         # Проверяем кэш в Supabase
         try:
+            logger.info(f"Проверка кэша в Supabase для channel_id: {channel_id}")
             response = requests.get(
                 f"{SUPABASE_URL}/rest/v1/ai_reports?channel_id=eq.{channel_id}&order=created_at.desc&limit=1",
                 headers=SUPABASE_HEADERS,
                 timeout=5
             )
+            
             if response.status_code == 200:
                 cached_data = response.json()
                 # Если есть свежий (менее 1 часа) кэш - возвращаем его
                 if cached_data and len(cached_data) > 0:
-                    created_at = datetime.fromisoformat(cached_data[0]['created_at'].replace('Z', '+00:00'))
-                    if (datetime.now(pytz.UTC) - created_at).total_seconds() < 3600:
-                        return jsonify({
-                            'ai_report': cached_data[0]['report_data'],
-                            'cached': True
-                        })
+                    created_at_str = cached_data[0]['created_at']
+                    try:
+                        # Преобразуем строку в datetime с учетом временной зоны
+                        created_at = datetime.fromisoformat(created_at_str.replace('Z', '+00:00'))
+                        now_utc = datetime.now(pytz.UTC)
+                        
+                        # Проверяем разницу во времени
+                        if (now_utc - created_at).total_seconds() < 3600:
+                            logger.info(f"Найден свежий кэш в Supabase (created_at: {created_at})")
+                            return jsonify({
+                                'ai_report': cached_data[0]['report_data'],
+                                'cached': True
+                            })
+                        else:
+                            logger.info(f"Кэш устарел (разница: {(now_utc - created_at).total_seconds()/60:.1f} минут)")
+                    except Exception as e:
+                        logger.error(f"Ошибка парсинга даты: {str(e)}")
+            else:
+                logger.warning(f"Supabase cache check failed: {response.status_code} - {response.text[:200]}")
         except Exception as e:
             logger.warning(f"Не удалось проверить кэш Supabase: {str(e)}")
         
         # Запускаем ИИ анализ СИНХРОННО
+        logger.info("Запуск ИИ анализа...")
         ai_report = analytics.generate_ai_analysis(report_data)
+        logger.info("ИИ анализ завершен")
         
         # Сохраняем в Supabase
         try:
+            logger.info("Сохранение результата в Supabase...")
             response = requests.post(
                 f"{SUPABASE_URL}/rest/v1/ai_reports",
                 headers=SUPABASE_HEADERS,
@@ -997,8 +1012,11 @@ def ai_analyze():
                 },
                 timeout=10
             )
-            if response.status_code not in (200, 201):
-                logger.warning(f"Supabase save error: {response.status_code} - {response.text}")
+            
+            if response.status_code in (200, 201):
+                logger.info("Результат успешно сохранен в Supabase")
+            else:
+                logger.warning(f"Supabase save error: {response.status_code} - {response.text[:200]}")
         except Exception as e:
             logger.warning(f"Не удалось сохранить в БД: {str(e)}")
         
