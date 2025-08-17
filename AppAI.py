@@ -232,8 +232,8 @@ class TelegramAnalytics:
             logger.error(f"Ошибка получения информации о канале: {str(e)}", exc_info=True)
             return None
     
-    async def generate_ai_analysis(self, report_data):
-        """Генерация ИИ анализа через OpenRouter"""
+    def generate_ai_analysis(self, report_data):
+        """Генерация ИИ анализа через OpenRouter (синхронная)"""
         try:
             prompt = f"""
             Ты эксперт по анализу Telegram каналов. Проанализируй данные и дай рекомендации.
@@ -269,7 +269,8 @@ class TelegramAnalytics:
                 "max_tokens": 2000
             }
             
-            response = requests.post(OPENROUTER_API_URL, headers=headers, json=payload, timeout=60)
+            # Увеличиваем таймаут до 120 секунд
+            response = requests.post(OPENROUTER_API_URL, headers=headers, json=payload, timeout=120)
             
             # Обработка ответа с проверкой структуры
             if response.status_code != 200:
@@ -934,34 +935,30 @@ def ai_analyze():
         
         channel_id = report_data['channel_info']['id']
         
-        # Проверяем кэш в Supabase через REST API
+        # Проверяем кэш в Supabase
         try:
             response = requests.get(
                 f"{SUPABASE_URL}/rest/v1/ai_reports?channel_id=eq.{channel_id}&order=created_at.desc&limit=1",
                 headers=SUPABASE_HEADERS,
                 timeout=5
             )
-            response.raise_for_status()
-            cached_data = response.json()
-            
-            # Если есть свежий (менее 1 часа) кэш - возвращаем его
-            if cached_data and len(cached_data) > 0:
-                created_at = datetime.fromisoformat(cached_data[0]['created_at'].replace('Z', '+00:00'))
-                if (datetime.now(pytz.UTC) - created_at).total_seconds() < 3600:
-                    return jsonify({
-                        'ai_report': cached_data[0]['report_data'],
-                        'cached': True
-                    })
+            if response.status_code == 200:
+                cached_data = response.json()
+                # Если есть свежий (менее 1 часа) кэш - возвращаем его
+                if cached_data and len(cached_data) > 0:
+                    created_at = datetime.fromisoformat(cached_data[0]['created_at'].replace('Z', '+00:00'))
+                    if (datetime.now(pytz.UTC) - created_at).total_seconds() < 3600:
+                        return jsonify({
+                            'ai_report': cached_data[0]['report_data'],
+                            'cached': True
+                        })
         except Exception as e:
             logger.warning(f"Не удалось проверить кэш Supabase: {str(e)}")
         
-        # Получаем глобальный event loop
-        loop = current_app.config['GLOBAL_EVENT_LOOP']
+        # Запускаем ИИ анализ СИНХРОННО
+        ai_report = analytics.generate_ai_analysis(report_data)
         
-        # Запускаем ИИ анализ
-        ai_report = loop.run_until_complete(analytics.generate_ai_analysis(report_data))
-        
-        # Сохраняем в Supabase через REST API
+        # Сохраняем в Supabase
         try:
             response = requests.post(
                 f"{SUPABASE_URL}/rest/v1/ai_reports",
@@ -972,7 +969,8 @@ def ai_analyze():
                 },
                 timeout=10
             )
-            response.raise_for_status()
+            if response.status_code not in (200, 201):
+                logger.warning(f"Supabase save error: {response.status_code} - {response.text}")
         except Exception as e:
             logger.warning(f"Не удалось сохранить в БД: {str(e)}")
         
@@ -1261,29 +1259,17 @@ def serve_static(filename):
     return send_from_directory('static', filename)
 
 if __name__ == '__main__':
-    os.makedirs('static/fonts', exist_ok=True)
-    # Создаем event loop здесь, внутри блока main
+    # Создаем event loop
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     
     try:
-        # Создаем базовый HTML файл
-        #create_basic_html()
+        # Создаем папки
+        os.makedirs('static/fonts', exist_ok=True)
         
         # Сохраняем loop в конфиг приложения
         app.config['GLOBAL_EVENT_LOOP'] = loop
-        # Получаем порт из переменных окружения
-        port = int(os.getenv('PORT', 5050))
         
-        # Инициализация клиента Telegram
-        logger.info("Инициализация Telegram клиента...")
-        try:
-            init_result = loop.run_until_complete(analytics.init_client())
-            if not init_result:
-                logger.warning("Не удалось инициализировать Telegram клиент. Будет инициализирован при первом запросе.")
-        except Exception as e:
-            logger.error(f"Ошибка инициализации Telegram клиента: {str(e)}", exc_info=True)
-            
         # Проверка подключения к Supabase
         logger.info("Проверка подключения к Supabase...")
         try:
@@ -1292,13 +1278,26 @@ if __name__ == '__main__':
                 headers=SUPABASE_HEADERS,
                 timeout=10
             )
-            response.raise_for_status()
-            logger.info("Подключение к Supabase успешно")
+            if response.status_code == 401:
+                logger.error("ОШИБКА: Неверные учетные данные Supabase!")
+            elif response.status_code == 200:
+                logger.info("Подключение к Supabase успешно")
+            else:
+                logger.error(f"Ошибка подключения к Supabase: {response.status_code} - {response.text}")
         except Exception as e:
             logger.error(f"Ошибка подключения к Supabase: {str(e)}")
+            
+        # Инициализация клиента Telegram
+        logger.info("Инициализация Telegram клиента...")
+        try:
+            init_result = loop.run_until_complete(analytics.init_client())
+            if not init_result:
+                logger.warning("Не удалось инициализировать Telegram клиент. Будет инициализирован при первом запросе.")
+        except Exception as e:
+            logger.error(f"Ошибка инициализации Telegram клиента: {str(e)}", exc_info=True)
         
-        # Сохраняем loop в конфиг приложения
-        app.config['GLOBAL_EVENT_LOOP'] = loop
+        # Получаем порт из переменных окружения
+        port = int(os.getenv('PORT', 5050))
         
         # Запуск Flask
         logger.info(f"Запуск Flask приложения на порту {port}...")
