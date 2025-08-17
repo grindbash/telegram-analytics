@@ -993,6 +993,7 @@ def get_channel_subscribers():
         logger.error(f"Ошибка в channel_subscribers: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
+@app.route('/find_channel', methods=['POST'])
 async def search_channels(query):
     """Поиск каналов по запросу"""
     if not analytics.client or not analytics.client.is_connected():
