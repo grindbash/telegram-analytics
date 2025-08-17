@@ -605,7 +605,7 @@
                    style="width: 100%; padding: 12px; border-radius: 12px; border: none; margin-bottom: 16px; font-size: 16px;">
             <button id="search-button" class="tg-button haptic-feedback">Найти каналы</button>
         </div>
-        <div id="search-results" class="search-results"></div>
+        <div id="search-results" class="search-results"><div class="search-result" id="search-status">Введите название канала для поиска</div></div>
     </div>
 
     <div id="loading-modal" class="loading-modal">
@@ -1335,58 +1335,56 @@
         }
 
         // Поиск каналов
-        async function searchChannels(query) {
-            try {
-                if (!query || query.length < 3) {
-                    document.getElementById('search-results').innerHTML = '<div class="search-result">Введите не менее 3 символов</div>';
-                    return;
-                }
-                
-                showLoadingModal("Ищу каналы...");
-                
-                const response = await fetch(`${API_BASE_URL}/find_channel`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        query: query
-                    })
-                });
-                
-                const result = await response.json();
-                
-                if (response.ok) {
-                    const resultsContainer = document.getElementById('search-results');
-                    resultsContainer.innerHTML = '';
-                    
-                    if (result.results && result.results.length > 0) {
-                        result.results.forEach(channel => {
-                            const resultElement = document.createElement('div');
-                            resultElement.className = 'search-result';
-                            resultElement.innerHTML = `
-                                <div class="search-result-title">${channel.title}</div>
-                                <div class="search-result-username">@${channel.username || 'нет username'}</div>
-                            `;
-                            resultElement.addEventListener('click', () => {
-                                selectChannel(channel);
-                            });
-                            resultsContainer.appendChild(resultElement);
-                        });
-                    } else {
-                        resultsContainer.innerHTML = '<div class="search-result">Каналы не найдены</div>';
-                    }
-                } else {
-                    throw new Error(result.error || 'Ошибка поиска каналов');
-                }
-            } catch (error) {
-                console.error('Ошибка поиска каналов:', error);
-                document.getElementById('search-results').innerHTML = `<div class="search-result">${error.message}</div>`;
-            } finally {
-                hideLoadingModal();
-            }
-        }
+		async function searchChannels(query) {
+			try {
+				const statusEl = document.getElementById('search-status');
+				statusEl.textContent = 'Идет поиск...';
+				
+				const response = await fetch(`${API_BASE_URL}/find_channel`, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						'Accept': 'application/json'
+					},
+					body: JSON.stringify({ query })
+				});
+
+				if (!response.ok) {
+					throw new Error(`Ошибка сервера: ${response.status}`);
+				}
+
+				const result = await response.json();
+				
+				if (result.error) {
+					throw new Error(result.error);
+				}
+				
+				const resultsContainer = document.getElementById('search-results');
+				resultsContainer.innerHTML = '';
+				
+				if (result.results && result.results.length > 0) {
+					result.results.forEach(channel => {
+						const resultElement = document.createElement('div');
+						resultElement.className = 'search-result';
+						resultElement.innerHTML = `
+							<div class="search-result-title">${channel.title}</div>
+							<div class="search-result-username">@${channel.username || 'нет username'}</div>
+						`;
+						resultElement.addEventListener('click', () => {
+							selectChannel(channel);
+						});
+						resultsContainer.appendChild(resultElement);
+					});
+				} else {
+					resultsContainer.innerHTML = '<div class="search-result">Каналы не найдены</div>';
+				}
+			} catch (error) {
+				console.error('Ошибка поиска каналов:', error);
+				document.getElementById('search-results').innerHTML = `
+					<div class="search-result error">Ошибка: ${error.message || 'Произошла ошибка при поиске'}</div>
+				`;
+			}
+		}
 
         // Выбор канала
         function selectChannel(channel) {

@@ -1003,31 +1003,36 @@ def find_channel():
         if not query:
             return jsonify({'error': 'Не указан поисковый запрос'}), 400
         
-        # Получаем глобальный event loop
-        loop = current_app.config['GLOBAL_EVENT_LOOP']
+        # Создаем новый цикл событий для этого запроса
+        new_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(new_loop)
         
-        # Выполняем поиск
-        async def search():
-            if not analytics.client or not analytics.client.is_connected():
-                await analytics.init_client()
-            
-            results = []
-            async for dialog in analytics.client.iter_dialogs():
-                if query.lower() in dialog.name.lower():
-                    results.append({
-                        'id': dialog.id,
-                        'title': dialog.name,
-                        'username': getattr(dialog.entity, 'username', None),
-                        'is_channel': dialog.is_channel
-                    })
-            return results
+        # Выполняем поиск в новом цикле
+        results = new_loop.run_until_complete(search_channels(query))
+        new_loop.close()
         
-        results = loop.run_until_complete(search())
         return jsonify({'results': results})
         
     except Exception as e:
         logger.error(f"Ошибка в find_channel: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)}), 500
+
+# Асинхронная функция для поиска каналов
+async def search_channels(query):
+    """Поиск каналов по запросу"""
+    if not analytics.client or not analytics.client.is_connected():
+        await analytics.init_client()
+    
+    results = []
+    async for dialog in analytics.client.iter_dialogs():
+        if query.lower() in dialog.name.lower():
+            results.append({
+                'id': dialog.id,
+                'title': dialog.name,
+                'username': getattr(dialog.entity, 'username', None),
+                'is_channel': dialog.is_channel
+            })
+    return results
 
 
 @app.route('/generate_pdf', methods=['POST'])
