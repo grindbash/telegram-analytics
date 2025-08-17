@@ -993,43 +993,49 @@ def get_channel_subscribers():
         logger.error(f"Ошибка в channel_subscribers: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
-@app.route('/find_channel', methods=['POST'])
-def find_channel():
-    """Поиск канала по названию"""
-    try:
-        data = request.get_json()
-        query = data.get('query')
-        
-        if not query:
-            return jsonify({'error': 'Не указан поисковый запрос'}), 400
-        
-        # Получаем глобальный event loop
-        loop = current_app.config['GLOBAL_EVENT_LOOP']
-        
-        # Выполняем поиск в основном цикле событий
-        results = loop.run_until_complete(search_channels(query))
-        
-        return jsonify({'results': results})
-        
-    except Exception as e:
-        logger.error(f"Ошибка в find_channel: {str(e)}", exc_info=True)
-        return jsonify({'error': str(e)}), 500
-
-# Асинхронная функция для поиска каналов
 async def search_channels(query):
     """Поиск каналов по запросу"""
     if not analytics.client or not analytics.client.is_connected():
         await analytics.init_client()
     
     results = []
-    async for dialog in analytics.client.iter_dialogs():
-        if query.lower() in dialog.name.lower() and dialog.is_channel:
-            results.append({
-                'id': dialog.id,
-                'title': dialog.name,
-                'username': getattr(dialog.entity, 'username', None),
-                'is_channel': True
-            })
+    
+    try:
+        # Попробуем найти канал напрямую по username
+        try:
+            entity = await analytics.client.get_entity(query)
+            if entity and (isinstance(entity, Channel) or isinstance(entity, ChannelForbidden)):
+                results.append({
+                    'id': entity.id,
+                    'title': entity.title,
+                    'username': getattr(entity, 'username', None),
+                    'is_channel': True
+                })
+                return results
+        except Exception:
+            pass
+        
+        # Если прямой поиск не дал результатов, ищем в диалогах
+        async for dialog in analytics.client.iter_dialogs():
+            if dialog.is_channel:
+                # Проверяем несколько вариантов совпадения
+                title_match = query.lower() in dialog.name.lower()
+                username_match = False
+                
+                # Проверяем username канала
+                if hasattr(dialog.entity, 'username') and dialog.entity.username:
+                    username_match = query.lower() == dialog.entity.username.lower()
+                
+                if title_match or username_match:
+                    results.append({
+                        'id': dialog.entity.id,
+                        'title': dialog.name,
+                        'username': getattr(dialog.entity, 'username', None),
+                        'is_channel': True
+                    })
+    except Exception as e:
+        logger.error(f"Ошибка поиска канала: {str(e)}", exc_info=True)
+    
     return results
 
 

@@ -598,15 +598,23 @@
         <button id="start-analysis" class="tg-button haptic-feedback">Выбрать канал для анализа</button>
     </div>
 
-    <div id="channel-modal" class="welcome-screen" style="display: none;">
-        <h1 class="welcome-title">Выберите канал</h1>
-        <div class="search-box">
-            <input type="text" id="channel-search" placeholder="Введите название канала" 
-                   style="width: 100%; padding: 12px; border-radius: 12px; border: none; margin-bottom: 16px; font-size: 16px;">
-            <button id="search-button" class="tg-button haptic-feedback">Найти каналы</button>
-        </div>
-        <div id="search-results" class="search-results"><div class="search-result" id="search-status">Введите название канала для поиска</div></div>
-    </div>
+		<div id="channel-modal" class="welcome-screen" style="display: none;">
+		<h1 class="welcome-title">Выберите канал</h1>
+		<div class="search-box">
+			<input type="text" id="channel-search" placeholder="Введите @username или название" 
+				   style="width: 100%; padding: 12px; border-radius: 12px; border: none; margin-bottom: 16px; font-size: 16px;">
+			<button id="search-button" class="tg-button haptic-feedback">Найти каналы</button>
+		</div>
+		
+		<div style="margin-top: 20px; text-align: center;">
+			<p>Или попробуйте:</p>
+			<button id="direct-link" class="tg-button haptic-feedback" style="margin-top: 10px;">
+				Перейти к анализу по @username
+			</button>
+		</div>
+		
+		<div id="search-results" class="search-results"></div>
+	</div>
 
     <div id="loading-modal" class="loading-modal">
         <div class="loading-content">
@@ -1390,6 +1398,13 @@
 				document.getElementById('search-results').innerHTML = `
 					<div class="search-result error">Ошибка: ${error.message || 'Произошла ошибка при поиске'}</div>
 				`;
+				document.getElementById('search-results').innerHTML = `
+					<div class="search-result">
+						<div class="search-result-title">Ищем канал "${query}"...</div>
+						<div class="search-result-username">Это может занять несколько секунд</div>
+					</div>
+				`;
+				`;
 			}
 		}
 
@@ -1477,6 +1492,26 @@
                 }
             }
         });
+		
+	    // Обработчик для прямого перехода по username
+		document.getElementById('direct-link').addEventListener('click', function() {
+			const username = document.getElementById('channel-search').value.trim();
+			if (username) {
+				// Удаляем символ @ если он есть
+				const cleanUsername = username.startsWith('@') ? username.substring(1) : username;
+				
+				selectChannel({
+					id: 0,  // Временный ID, будет заменен при реальном анализе
+					title: cleanUsername,
+					username: cleanUsername,
+					is_channel: true
+				});
+			} else {
+				if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
+				alert('Пожалуйста, введите username канала');
+			}
+		});
+
 
         // Обработчик кнопки "Обновить данные"
         document.getElementById('refresh-data').addEventListener('click', function() {
