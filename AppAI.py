@@ -1147,14 +1147,14 @@ async def search_channels(query):
 def generate_pdf():
     """Генерация PDF отчета с поддержкой кириллицы"""
     try:
-        # Регистрация кириллического шрифта
+        # Регистрация кириллических шрифтов
         try:
-            # Путь к шрифту в статических файлах
+            # Путь к шрифтам в статических файлах
             font_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'fonts')
             os.makedirs(font_dir, exist_ok=True)
-            font_path = os.path.join(font_dir, 'DejaVuSans.ttf')
             
-            # Скачиваем шрифт если его нет
+            # Основной шрифт
+            font_path = os.path.join(font_dir, 'DejaVuSans.ttf')
             if not os.path.exists(font_path):
                 logger.info("Скачивание кириллического шрифта...")
                 font_url = "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf"
@@ -1162,9 +1162,20 @@ def generate_pdf():
                 with open(font_path, 'wb') as f:
                     f.write(response.content)
             
+            # Жирный шрифт
+            bold_font_path = os.path.join(font_dir, 'DejaVuSans-Bold.ttf')
+            if not os.path.exists(bold_font_path):
+                logger.info("Скачивание жирного кириллического шрифта...")
+                bold_font_url = "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans-Bold.ttf"
+                response = requests.get(bold_font_url)
+                with open(bold_font_path, 'wb') as f:
+                    f.write(response.content)
+            
+            # Регистрируем шрифты
             pdfmetrics.registerFont(TTFont('DejaVuSans', font_path))
+            pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', bold_font_path))
             base_font = 'DejaVuSans'
-            logger.info("Кириллический шрифт зарегистрирован")
+            logger.info("Кириллические шрифты зарегистрированы")
         except Exception as e:
             logger.error(f"Ошибка шрифта: {str(e)}")
             base_font = 'Helvetica'
@@ -1207,7 +1218,7 @@ def generate_pdf():
             fontSize=12,
             textColor=colors.HexColor('#3B82F6'),
             spaceAfter=10,
-            fontName=base_font
+            fontName='DejaVuSans-Bold'  # Используем жирный шрифт
         ))
         
         styles.add(ParagraphStyle(
@@ -1236,7 +1247,7 @@ def generate_pdf():
             textColor=colors.HexColor('#1E40AF'),
             spaceAfter=6,
             spaceBefore=10,
-            fontName=base_font + '-Bold'
+            fontName='DejaVuSans-Bold'  # Используем жирный шрифт
         ))
         
         # Стиль для выделенных пунктов
@@ -1281,7 +1292,7 @@ def generate_pdf():
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F3F4F6')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#1F2937')),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), base_font + '-Bold'),
+            ('FONTNAME', (0, 0), (-1, 0), 'DejaVuSans-Bold'),
             ('FONTSIZE', (0, 0), (-1, 0), 10),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
             ('BACKGROUND', (0, 1), (-1, -1), colors.white),
@@ -1303,64 +1314,29 @@ def generate_pdf():
         if ai_report:
             elements.append(Paragraph("ИИ Анализ", styles['Header']))
             
-            # Форматируем ИИ анализ для красивого отображения
-            formatted_ai_report = []
-            current_section = []
+            # Упрощенное форматирование ИИ анализа
+            # Разбиваем на абзацы и добавляем с соответствующими стилями
+            paragraphs = ai_report.split('\n\n')
             
-            # Разбиваем на строки и обрабатываем
-            for line in ai_report.split('\n'):
-                line = line.strip()
-                if not line:
+            for para in paragraphs:
+                para = para.strip()
+                if not para:
                     continue
                     
-                # Обработка заголовков
-                if line.startswith('###'):
-                    # Сохраняем предыдущую секцию
-                    if current_section:
-                        formatted_ai_report.append(('paragraph', '\n'.join(current_section)))
-                        current_section = []
-                    
-                    # Добавляем подзаголовок
-                    formatted_ai_report.append(('subheader', line.replace('###', '').strip()))
-                
-                # Обработка маркированных списков
-                elif line.startswith('- **'):
-                    # Сохраняем предыдущую секцию
-                    if current_section:
-                        formatted_ai_report.append(('paragraph', '\n'.join(current_section)))
-                        current_section = []
-                    
-                    # Добавляем выделенный пункт
-                    formatted_ai_report.append(('emphasis', line.replace('- **', '').replace(':**', '').strip()))
-                
-                # Обработка горизонтальных разделителей
-                elif line.startswith('---'):
-                    # Сохраняем предыдущую секцию
-                    if current_section:
-                        formatted_ai_report.append(('paragraph', '\n'.join(current_section)))
-                        current_section = []
-                    
-                    # Добавляем разделитель
-                    formatted_ai_report.append(('spacer',))
-                
-                # Обычный текст
+                # Заголовки
+                if para.startswith('###'):
+                    elements.append(Paragraph(para.replace('###', '').strip(), styles['Subheader']))
+                # Списки
+                elif para.startswith('- '):
+                    items = para.split('\n')
+                    for item in items:
+                        if item.startswith('- '):
+                            elements.append(Paragraph(f"• {item[2:].strip()}", styles['Body']))
+                    elements.append(Spacer(1, 10))
+                # Обычные абзацы
                 else:
-                    current_section.append(line)
-            
-            # Добавляем последнюю секцию
-            if current_section:
-                formatted_ai_report.append(('paragraph', '\n'.join(current_section)))
-            
-            # Формируем элементы PDF
-            for item_type, content in formatted_ai_report:
-                if item_type == 'subheader':
-                    elements.append(Paragraph(content, styles['Subheader']))
-                elif item_type == 'emphasis':
-                    elements.append(Paragraph(f"• {content}", styles['Emphasis']))
-                elif item_type == 'paragraph':
-                    elements.append(Paragraph(content, styles['Body']))
-                elif item_type == 'spacer':
-                    elements.append(Spacer(1, 15))
+                    elements.append(Paragraph(para, styles['Body']))
+                    elements.append(Spacer(1, 10))
             
             elements.append(Spacer(1, 20))
         
@@ -1384,7 +1360,7 @@ def generate_pdf():
                 ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F3F4F6')),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#1F2937')),
                 ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, 0), base_font + '-Bold'),
+                ('FONTNAME', (0, 0), (-1, 0), 'DejaVuSans-Bold'),
                 ('FONTSIZE', (0, 0), (-1, 0), 9),
                 ('FONTSIZE', (0, 1), (-1, -1), 8),
                 ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
