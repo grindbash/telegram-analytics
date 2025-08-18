@@ -236,22 +236,59 @@ class TelegramAnalytics:
         """Генерация ИИ анализа через OpenRouter"""
         try:
             prompt = f"""
-            Ты эксперт по анализу Telegram каналов. Проанализируй данные и дай рекомендации.
-            
+            Ты эксперт по анализу Telegram каналов с опытом в data-driven маркетинге. Проанализируй предоставленные данные и дай развернутые рекомендации.
+
             Контекст:
             - Канал: {report_data['channel_info']['title']}
             - Подписчиков: {report_data['channel_info']['subscribers']}
             - Период анализа: {report_data['analysis_period']['hours_back']} часов
-            
+
             Данные для анализа:
             {json.dumps(report_data['summary'], indent=2, ensure_ascii=False)}
-            
-            Требования:
-            1. Выяви ключевые тенденции
-            2. Дай рекомендации по контенту
-            3. Предложи оптимальное время публикаций
-            4. Оцени вовлеченность аудитории
-            5. Спрогнозируй рост на следующий период
+
+            Требования к анализу:
+
+            1. Ключевые тенденции:
+            - Проанализируй динамику роста/падения подписчиков
+            - Выяви закономерности в активности аудитории
+            - Определи аномалии в статистике (резкие скачки или падения)
+            - Оцени сезонность активности
+
+            2. Рекомендации по контенту:
+            - Определи наиболее эффективные форматы контента (текст, видео, опросы и т.д.)
+            - Проанализируй темы с максимальной вовлеченностью
+            - Предложи оптимальное соотношение типов контента
+            - Дай рекомендации по улучшению контент-стратегии
+
+            3. Оптимальное время публикаций:
+            - Определи часы и дни максимальной активности аудитории
+            - Предложи конкретное расписание публикаций
+            - Учитывай временные зоны основной аудитории
+            - Дай рекомендации по частоте публикаций
+
+            4. Оценка вовлеченности:
+            - Рассчитай Engagement Rate (ER) по формуле: (Реакции + Комментарии + Репосты) / Подписчики * 100%
+            - Сравни показатели с бенчмарками для ниши
+            - Проанализируй CTR и другие метрики вовлеченности
+            - Выяви посты с аномально высокой/низкой вовлеченностью
+
+            5. Прогноз роста:
+            - На основе текущих метрик построй прогноз на 7/30 дней
+            - Предложи меры для ускорения роста (реклама, коллаборации и т.д.)
+            - Оцени потенциал вирального роста
+            - Дай рекомендации по привлечению новой аудитории
+
+            Дополнительно:
+            - Предложи A/B тесты для улучшения показателей
+            - Дай рекомендации по SEO в Telegram
+            - Проанализируй потенциал монетизации
+            - Предложи инструменты для автоматизации аналитики
+
+            Формат вывода:
+            1. Краткое резюме по каналу
+            2. Детальный анализ по каждому пункту
+            3. Конкретные рекомендации для внедрения
+            4. Прогноз развития на ближайший период
             """
             
             # Логируем длину промпта
@@ -265,7 +302,7 @@ class TelegramAnalytics:
             payload = {
                 "model": AI_MODEL,
                 "messages": [
-                    {"role": "system", "content": "Ты профессиональный аналитик Telegram каналов"},
+                    {"role": "system", "content": "Ты эксперт по анализу Telegram каналов с опытом в data-driven маркетинге. Проанализируй предоставленные данные и дай развернутые рекомендации."},
                     {"role": "user", "content": prompt}
                 ],
                 "temperature": 0.7,
@@ -1106,7 +1143,7 @@ async def search_channels(query):
     return results
 
 
-@app.route('/generate_pdf', methods=['POST'])
+@@app.route('/generate_pdf', methods=['POST'])
 def generate_pdf():
     """Генерация PDF отчета с поддержкой кириллицы"""
     try:
@@ -1190,6 +1227,27 @@ def generate_pdf():
             spaceAfter=5,
             fontName=base_font
         ))
+        
+        # Стиль для подзаголовков ИИ анализа
+        styles.add(ParagraphStyle(
+            name='Subheader',
+            alignment=TA_LEFT,
+            fontSize=11,
+            textColor=colors.HexColor('#1E40AF'),
+            spaceAfter=6,
+            spaceBefore=10,
+            fontName=base_font + '-Bold'
+        ))
+        
+        # Стиль для выделенных пунктов
+        styles.add(ParagraphStyle(
+            name='Emphasis',
+            alignment=TA_LEFT,
+            fontSize=10,
+            textColor=colors.HexColor('#1C64F2'),
+            spaceAfter=6,
+            fontName=base_font
+        ))
 
         # Элементы документа
         elements = []
@@ -1210,10 +1268,10 @@ def generate_pdf():
         # Основные метрики
         metrics = [
             ['Метрика', 'Значение'],
-            ['Подписчиков', report_data['channel_info']['subscribers']],
-            ['Всего постов', report_data['summary']['total_posts']],
-            ['Всего просмотров', report_data['summary']['total_views']],
-            ['Средний охват', round(report_data['summary']['avg_views_per_post'], 1)],
+            ['Подписчиков', str(report_data['channel_info']['subscribers'])],
+            ['Всего постов', str(report_data['summary']['total_posts'])],
+            ['Всего просмотров', str(report_data['summary']['total_views'])],
+            ['Средний охват', str(round(report_data['summary']['avg_views_per_post'], 1))],
             ['ER (просмотры)', f"{report_data['summary']['engagement_rate']['er_views']}%"],
             ['ER (подписчики)', f"{report_data['summary']['engagement_rate']['er_subscribers']}%"]
         ]
@@ -1223,12 +1281,13 @@ def generate_pdf():
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F3F4F6')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#1F2937')),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTNAME', (0, 0), (-1, 0), base_font + '-Bold'),
             ('FONTSIZE', (0, 0), (-1, 0), 10),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
             ('BACKGROUND', (0, 1), (-1, -1), colors.white),
             ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB')),
-            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB'))
+            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB')),
+            ('FONTNAME', (0, 1), (-1, -1), base_font)  # Указываем шрифт для всех ячеек
         ]))
         
         elements.append(metrics_table)
@@ -1243,9 +1302,66 @@ def generate_pdf():
         # Анализ ИИ
         if ai_report:
             elements.append(Paragraph("ИИ Анализ", styles['Header']))
+            
+            # Форматируем ИИ анализ для красивого отображения
+            formatted_ai_report = []
+            current_section = []
+            
+            # Разбиваем на строки и обрабатываем
             for line in ai_report.split('\n'):
-                if line.strip():
-                    elements.append(Paragraph(line.strip(), styles['Body']))
+                line = line.strip()
+                if not line:
+                    continue
+                    
+                # Обработка заголовков
+                if line.startswith('###'):
+                    # Сохраняем предыдущую секцию
+                    if current_section:
+                        formatted_ai_report.append(('paragraph', '\n'.join(current_section)))
+                        current_section = []
+                    
+                    # Добавляем подзаголовок
+                    formatted_ai_report.append(('subheader', line.replace('###', '').strip()))
+                
+                # Обработка маркированных списков
+                elif line.startswith('- **'):
+                    # Сохраняем предыдущую секцию
+                    if current_section:
+                        formatted_ai_report.append(('paragraph', '\n'.join(current_section)))
+                        current_section = []
+                    
+                    # Добавляем выделенный пункт
+                    formatted_ai_report.append(('emphasis', line.replace('- **', '').replace(':**', '').strip()))
+                
+                # Обработка горизонтальных разделителей
+                elif line.startswith('---'):
+                    # Сохраняем предыдущую секцию
+                    if current_section:
+                        formatted_ai_report.append(('paragraph', '\n'.join(current_section)))
+                        current_section = []
+                    
+                    # Добавляем разделитель
+                    formatted_ai_report.append(('spacer',))
+                
+                # Обычный текст
+                else:
+                    current_section.append(line)
+            
+            # Добавляем последнюю секцию
+            if current_section:
+                formatted_ai_report.append(('paragraph', '\n'.join(current_section)))
+            
+            # Формируем элементы PDF
+            for item_type, content in formatted_ai_report:
+                if item_type == 'subheader':
+                    elements.append(Paragraph(content, styles['Subheader']))
+                elif item_type == 'emphasis':
+                    elements.append(Paragraph(f"• {content}", styles['Emphasis']))
+                elif item_type == 'paragraph':
+                    elements.append(Paragraph(content, styles['Body']))
+                elif item_type == 'spacer':
+                    elements.append(Spacer(1, 15))
+            
             elements.append(Spacer(1, 20))
         
         # Топ постов
@@ -1258,7 +1374,7 @@ def generate_pdf():
                 preview = post['text_preview'][:50] + '...' if len(post['text_preview']) > 50 else post['text_preview']
                 top_posts_data.append([
                     post['date'],
-                    post['views'],
+                    str(post['views']),
                     post['content_type'],
                     preview
                 ])
@@ -1268,13 +1384,14 @@ def generate_pdf():
                 ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F3F4F6')),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#1F2937')),
                 ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTNAME', (0, 0), (-1, 0), base_font + '-Bold'),
                 ('FONTSIZE', (0, 0), (-1, 0), 9),
                 ('FONTSIZE', (0, 1), (-1, -1), 8),
                 ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
                 ('BACKGROUND', (0, 1), (-1, -1), colors.white),
                 ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB')),
-                ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB'))
+                ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB')),
+                ('FONTNAME', (0, 1), (-1, -1), base_font)  # Указываем шрифт для всех ячеек
             ]))
             
             elements.append(top_table)
@@ -1295,6 +1412,7 @@ def generate_pdf():
     except Exception as e:
         logger.error(f"Ошибка генерации PDF: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)}), 500
+        
 # Отдача фронтенда
 @app.route('/')
 def home():
