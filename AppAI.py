@@ -1325,30 +1325,26 @@ if __name__ == '__main__':
         except Exception as e:
             logger.error(f"Ошибка подключения к Supabase: {str(e)}")
             
-        # Инициализация клиента Telegram
-        logger.info("Инициализация Telegram клиента...")
-        try:
-            # Запускаем инициализацию в event loop
-            future = asyncio.run_coroutine_threadsafe(analytics.init_client(), loop)
-            init_result = future.result()
-            if not init_result:
-                logger.warning("Не удалось инициализировать Telegram клиент. Будет инициализирован при первом запросе.")
-        except Exception as e:
-            logger.error(f"Ошибка инициализации Telegram клиента: {str(e)}", exc_info=True)
+        # Инициализация клиента Telegram в фоновом режиме
+        def init_telegram_client():
+            try:
+                logger.info("Инициализация Telegram клиента...")
+                future = asyncio.run_coroutine_threadsafe(analytics.init_client(), loop)
+                init_result = future.result()
+                if not init_result:
+                    logger.warning("Не удалось инициализировать Telegram клиент. Будет инициализирован при первом запросе.")
+            except Exception as e:
+                logger.error(f"Ошибка инициализации Telegram клиента: {str(e)}", exc_info=True)
+        
+        telegram_thread = threading.Thread(target=init_telegram_client, daemon=True)
+        telegram_thread.start()
         
         # Получаем порт из переменных окружения
         port = int(os.getenv('PORT', 5050))
         
-        # Запуск Flask в отдельном потоке
-        def run_flask():
-            app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
-        
-        flask_thread = threading.Thread(target=run_flask, daemon=True)
-        flask_thread.start()
-        logger.info(f"Запуск Flask приложения на порту {port} в отдельном потоке...")
-        
-        # Запускаем event loop в основном потоке
-        loop.run_forever()
+        # Запуск Flask напрямую в главном потоке
+        logger.info(f"Запуск Flask приложения на порту {port}...")
+        app.run(host='0.0.0.0', port=port, debug=False)
         
     except Exception as e:
         logger.error(f"Ошибка запуска приложения: {str(e)}", exc_info=True)
