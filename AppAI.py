@@ -35,10 +35,6 @@ if sys.stderr.encoding != 'UTF-8':
 
 # Загружаем переменные окружения
 load_dotenv()
-# В начале файла (после импортов)
-loop = asyncio.new_event_loop()
-asyncio.set_event_loop(loop)
-
 
 # =============================================
 # НАСТРОЙКА ЛОГИРОВАНИЯ
@@ -233,18 +229,27 @@ class TelegramAnalytics:
             return None
     
     async def generate_ai_analysis(self, report_data):
-        """Генерация ИИ анализа через OpenRouter"""
+        """Генерация ИИ анализа через OpenRouter с безопасным доступом к данным"""
         try:
+            # Безопасное извлечение данных
+            channel_info = report_data.get('channel_info', {})
+            analysis_period = report_data.get('analysis_period', {})
+            summary = report_data.get('summary', {})
+            
+            channel_title = channel_info.get('title', 'Неизвестный канал')
+            subscribers = channel_info.get('subscribers', 0)
+            hours_back = analysis_period.get('hours_back', 24)
+            
             prompt = f"""
             Ты эксперт по анализу Telegram каналов с опытом в data-driven маркетинге. Проанализируй предоставленные данные и дай развернутые рекомендации.
 
             Контекст:
-            - Канал: {report_data['channel_info']['title']}
-            - Подписчиков: {report_data['channel_info']['subscribers']}
-            - Период анализа: {report_data['analysis_period']['hours_back']} часов
+            - Канал: {channel_title}
+            - Подписчиков: {subscribers}
+            - Период анализа: {hours_back} часов
 
             Данные для анализа:
-            {json.dumps(report_data['summary'], indent=2, ensure_ascii=False)}
+            {json.dumps(summary, indent=2, ensure_ascii=False)}
 
             Требования к анализу:
 
@@ -358,8 +363,6 @@ class TelegramAnalytics:
         except Exception as e:
             logger.error(f"Ошибка ИИ анализа: {str(e)}", exc_info=True)
             return f"Ошибка при генерации ИИ анализа: {str(e)}"
-        finally:
-            pass  # Добавляем блок finally для коррекции синтаксиса
 
     def _get_views(self, message):
         """Безопасное получение количества просмотров"""
@@ -831,113 +834,6 @@ class TelegramAnalytics:
 # Создаем экземпляр аналитики
 analytics = TelegramAnalytics()
 
-# Функция для создания базового HTML файла если его нет
-# def create_basic_html():
-    # """Создаем базовый HTML файл для фронтенда"""
-    # html_content = """<!DOCTYPE html>
-# <html lang="ru">
-# <head>
-    # <meta charset="UTF-8">
-    # <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    # <title>Telegram Analytics</title>
-    # <style>
-        # body { font-family: Arial, sans-serif; margin: 40px; }
-        # .container { max-width: 800px; margin: 0 auto; }
-        # .form-group { margin-bottom: 20px; }
-        # label { display: block; margin-bottom: 5px; font-weight: bold; }
-        # input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
-        # button { background-color: #007bff; color: white; padding: 12px 20px; border: none; border-radius: 4px; cursor: pointer; }
-        # button:hover { background-color: #0056b3; }
-        # .result { margin-top: 20px; padding: 20px; background-color: #f8f9fa; border-radius: 4px; }
-        # .error { background-color: #f8d7da; color: #721c24; }
-        # .loading { text-align: center; color: #6c757d; }
-    # </style>
-# </head>
-# <body>
-    # <div class="container">
-        # <h1>Telegram Channel Analytics</h1>
-        # <form id="analyticsForm">
-            # <div class="form-group">
-                # <label for="channel">Канал (username или ID):</label>
-                # <input type="text" id="channel" placeholder="@channelname или -1001234567890" required>
-            # </div>
-            # <div class="form-group">
-                # <label for="hours">Период анализа (часов):</label>
-                # <select id="hours">
-                    # <option value="24">24 часа</option>
-                    # <option value="72">3 дня</option>
-                    # <option value="168">7 дней</option>
-                    # <option value="720">30 дней</option>
-                # </select>
-            # </div>
-            # <button type="submit">Анализировать</button>
-        # </form>
-        # <div id="result" class="result" style="display: none;"></div>
-    # </div>
-    
-    # <script>
-        # document.getElementById('analyticsForm').addEventListener('submit', async (e) => {
-            # e.preventDefault();
-            
-            # const channel = document.getElementById('channel').value;
-            # const hours = parseInt(document.getElementById('hours').value);
-            # const resultDiv = document.getElementById('result');
-            
-            # resultDiv.style.display = 'block';
-            # resultDiv.className = 'result loading';
-            # resultDiv.innerHTML = 'Анализ в процессе...';
-            
-            # try {
-                # const response = await fetch('/analyze', {
-                    # method: 'POST',
-                    # headers: {
-                        # 'Content-Type': 'application/json',
-                    # },
-                    # body: JSON.stringify({
-                        # channel_username: channel,
-                        # hours_back: hours
-                    # })
-                # });
-                
-                # const data = await response.json();
-                
-                # if (data.error) {
-                    # resultDiv.className = 'result error';
-                    # resultDiv.innerHTML = `Ошибка: ${data.error}`;
-                # } else {
-                    # resultDiv.className = 'result';
-                    # resultDiv.innerHTML = formatResult(data);
-                # }
-            # } catch (error) {
-                # resultDiv.className = 'result error';
-                # resultDiv.innerHTML = `Ошибка: ${error.message}`;
-            # }
-        # });
-        
-        # function formatResult(data) {
-            # return `
-                # <h2>${data.channel_info.title}</h2>
-                # <p><strong>Подписчиков:</strong> ${data.channel_info.subscribers}</p>
-                # <p><strong>Период:</strong> ${data.analysis_period.hours_back} часов</p>
-                # <p><strong>Всего постов:</strong> ${data.summary.total_posts}</p>
-                # <p><strong>Всего просмотров:</strong> ${data.summary.total_views}</p>
-                # <p><strong>Средний охват:</strong> ${data.summary.avg_views_per_post}</p>
-                # <p><strong>Engagement Rate:</strong> ${data.summary.engagement_rate.er_views}%</p>
-                
-                # <h3>Рекомендации:</h3>
-                # <ul>
-                    # ${data.recommendations.map(rec => `<li>${rec}</li>`).join('')}
-                # </ul>
-            # `;
-        # }
-    # </script>
-# </body>
-# </html>"""
-    
-    # os.makedirs('static', exist_ok=True)
-    # with open('static/index.html', 'w', encoding='utf-8') as f:
-        # f.write(html_content)
-
 # Flask маршруты
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -979,15 +875,12 @@ def perform_analysis():
         # Получаем глобальный event loop
         loop = current_app.config['GLOBAL_EVENT_LOOP']
         
-        # Запускаем анализ
-        result = loop.run_until_complete(analytics.analyze_channel(channel_identifier, hours_back))
-        
-        # Если нет ошибки, добавляем ИИ анализ
-        if 'error' not in result:
-            logger.info("Запуск ИИ анализа...")
-            ai_report = loop.run_until_complete(analytics.generate_ai_analysis(result))
-            logger.info(f"ИИ анализ завершен, длина: {len(ai_report)} символов")
-            result['ai_report'] = ai_report
+        # Запускаем анализ с использованием run_coroutine_threadsafe
+        future = asyncio.run_coroutine_threadsafe(
+            analytics.analyze_channel(channel_identifier, hours_back),
+            loop
+        )
+        result = future.result()
         
         return jsonify(result)
         
@@ -1051,7 +944,11 @@ def ai_analyze():
         
         # Запускаем ИИ анализ через event loop
         logger.info("Запуск ИИ анализа...")
-        ai_report = loop.run_until_complete(analytics.generate_ai_analysis(report_data))
+        future = asyncio.run_coroutine_threadsafe(
+            analytics.generate_ai_analysis(report_data),
+            loop
+        )
+        ai_report = future.result()
         logger.info("ИИ анализ завершен")
         
         # Сохраняем в Supabase
@@ -1094,7 +991,11 @@ def get_channel_subscribers():
         loop = current_app.config['GLOBAL_EVENT_LOOP']
         
         # Получаем информацию о канале
-        result = loop.run_until_complete(analytics.get_channel_info(channel_identifier))
+        future = asyncio.run_coroutine_threadsafe(
+            analytics.get_channel_info(channel_identifier),
+            loop
+        )
+        result = future.result()
         
         if result and 'error' not in result:
             return jsonify({
@@ -1111,51 +1012,29 @@ def get_channel_subscribers():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/find_channel', methods=['POST'])
-async def search_channels(query):
+def find_channel():
     """Поиск каналов по запросу"""
-    if not analytics.client or not analytics.client.is_connected():
-        await analytics.init_client()
-    
-    results = []
-    
     try:
-        # Попробуем найти канал напрямую по username
-        try:
-            entity = await analytics.client.get_entity(query)
-            if entity and (isinstance(entity, Channel) or isinstance(entity, ChannelForbidden)):
-                results.append({
-                    'id': entity.id,
-                    'title': entity.title,
-                    'username': getattr(entity, 'username', None),
-                    'is_channel': True
-                })
-                return results
-        except Exception:
-            pass
+        data = request.get_json()
+        query = data.get('query')
+        if not query:
+            return jsonify({'error': 'Не указан запрос для поиска'}), 400
         
-        # Если прямой поиск не дал результатов, ищем в диалогах
-        async for dialog in analytics.client.iter_dialogs():
-            if dialog.is_channel:
-                # Проверяем несколько вариантов совпадения
-                title_match = query.lower() in dialog.name.lower()
-                username_match = False
-                
-                # Проверяем username канала
-                if hasattr(dialog.entity, 'username') and dialog.entity.username:
-                    username_match = query.lower() == dialog.entity.username.lower()
-                
-                if title_match or username_match:
-                    results.append({
-                        'id': dialog.entity.id,
-                        'title': dialog.name,
-                        'username': getattr(dialog.entity, 'username', None),
-                        'is_channel': True
-                    })
+        # Получаем глобальный event loop
+        loop = current_app.config['GLOBAL_EVENT_LOOP']
+        
+        # Запускаем поиск
+        future = asyncio.run_coroutine_threadsafe(
+            analytics.search_channels(query),
+            loop
+        )
+        results = future.result()
+        
+        return jsonify(results)
+    
     except Exception as e:
         logger.error(f"Ошибка поиска канала: {str(e)}", exc_info=True)
-    
-    return results
-
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/generate_pdf', methods=['POST'])
 def generate_pdf():
@@ -1411,9 +1290,6 @@ def generate_pdf():
 # Отдача фронтенда
 @app.route('/')
 def home():
-    # Создаем базовый HTML файл если его нет
-    if not os.path.exists('static/index.html'):
-        create_basic_html()
     return send_from_directory('static', 'index.html')
 
 @app.route('/<path:filename>')
@@ -1422,7 +1298,7 @@ def serve_static(filename):
 
 if __name__ == '__main__':
     # Создаем event loop
-    loop = asyncio.new_event_loop()
+    loop = get_or_create_eventloop()
     asyncio.set_event_loop(loop)
     
     try:
@@ -1452,7 +1328,9 @@ if __name__ == '__main__':
         # Инициализация клиента Telegram
         logger.info("Инициализация Telegram клиента...")
         try:
-            init_result = loop.run_until_complete(analytics.init_client())
+            # Запускаем инициализацию в event loop
+            future = asyncio.run_coroutine_threadsafe(analytics.init_client(), loop)
+            init_result = future.result()
             if not init_result:
                 logger.warning("Не удалось инициализировать Telegram клиент. Будет инициализирован при первом запросе.")
         except Exception as e:
@@ -1461,9 +1339,16 @@ if __name__ == '__main__':
         # Получаем порт из переменных окружения
         port = int(os.getenv('PORT', 5050))
         
-        # Запуск Flask
-        logger.info(f"Запуск Flask приложения на порту {port}...")
-        app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
+        # Запуск Flask в отдельном потоке
+        def run_flask():
+            app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
+        
+        flask_thread = threading.Thread(target=run_flask, daemon=True)
+        flask_thread.start()
+        logger.info(f"Запуск Flask приложения на порту {port} в отдельном потоке...")
+        
+        # Запускаем event loop в основном потоке
+        loop.run_forever()
         
     except Exception as e:
         logger.error(f"Ошибка запуска приложения: {str(e)}", exc_info=True)
@@ -1471,5 +1356,6 @@ if __name__ == '__main__':
         logger.info("Завершение работы приложения...")
         # Корректно закрываем event loop
         if loop:
+            loop.stop()
             loop.run_until_complete(loop.shutdown_asyncgens())
             loop.close()
