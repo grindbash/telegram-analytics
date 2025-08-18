@@ -302,11 +302,11 @@ class TelegramAnalytics:
             payload = {
                 "model": AI_MODEL,
                 "messages": [
-                    {"role": "system", "content": "Ты эксперт по анализу Telegram каналов с опытом в data-driven маркетинге. Проанализируй предоставленные данные и дай развернутые рекомендации."},
+                    {"role": "system", "content": "Ты профессиональный аналитик Telegram каналов"},
                     {"role": "user", "content": prompt}
                 ],
                 "temperature": 0.7,
-                "max_tokens": 2000
+                "max_tokens": 4000  # Увеличили лимит токенов
             }
             
             logger.info(f"Отправка запроса к OpenRouter: {OPENROUTER_API_URL}")
@@ -316,19 +316,18 @@ class TelegramAnalytics:
                 OPENROUTER_API_URL,
                 headers=headers,
                 json=payload,
-                timeout=60
+                timeout=120  # Увеличили таймаут
             )
             
             # Детальное логирование ответа
             logger.info(f"Статус ответа OpenRouter: {response.status_code}")
-            logger.info(f"Заголовки ответа: {response.headers}")
             
             try:
                 response_data = response.json()
                 logger.info(f"Тело ответа (первые 500 символов): {str(response_data)[:500]}")
             except json.JSONDecodeError:
                 logger.error(f"Не удалось распарсить JSON: {response.text[:500]}")
-                return "Ошибка: неверный формат ответа ИИ"
+                return f"Ошибка: неверный формат ответа ИИ"
             
             # Проверяем различные форматы ответа
             if response.status_code != 200:
@@ -338,7 +337,14 @@ class TelegramAnalytics:
             
             # Проверяем возможные форматы ответа
             if 'choices' in response_data and response_data['choices']:
-                return response_data['choices'][0]['message']['content']
+                content = response_data['choices'][0]['message']['content']
+                
+                # Проверяем, был ли ответ обрезан
+                if response_data['choices'][0].get('finish_reason') == 'length':
+                    logger.warning("Ответ ИИ был обрезан из-за ограничения длины")
+                    content += "\n\n[Внимание: ответ был обрезан из-за ограничения длины]"
+                
+                return content
             elif 'message' in response_data:
                 return response_data['message']
             elif 'text' in response_data:
@@ -348,7 +354,7 @@ class TelegramAnalytics:
             else:
                 logger.error(f"Неожиданный формат ответа: {json.dumps(response_data, indent=2)[:500]}")
                 return "Ошибка: неверный формат ответа ИИ"
-                
+            
         except Exception as e:
             logger.error(f"Ошибка ИИ анализа: {str(e)}", exc_info=True)
             return f"Ошибка при генерации ИИ анализа: {str(e)}"
@@ -975,6 +981,14 @@ def perform_analysis():
         
         # Запускаем анализ
         result = loop.run_until_complete(analytics.analyze_channel(channel_identifier, hours_back))
+        
+        # Если нет ошибки, добавляем ИИ анализ
+        if 'error' not in result:
+            logger.info("Запуск ИИ анализа...")
+            ai_report = loop.run_until_complete(analytics.generate_ai_analysis(result))
+            logger.info(f"ИИ анализ завершен, длина: {len(ai_report)} символов")
+            result['ai_report'] = ai_report
+        
         return jsonify(result)
         
     except Exception as e:
@@ -1197,7 +1211,8 @@ def generate_pdf():
             rightMargin=40,
             leftMargin=40,
             topMargin=40,
-            bottomMargin=40
+            bottomMargin=40,
+            allowSplitting=1  # Разрешаем разбиение контента на страницы
         )
         
         # Стили для текста с кириллическим шрифтом
@@ -1209,7 +1224,7 @@ def generate_pdf():
             alignment=TA_CENTER,
             fontSize=14,
             spaceAfter=20,
-            fontName=base_font
+            fontName='DejaVuSans-Bold'
         ))
         
         styles.add(ParagraphStyle(
@@ -1218,7 +1233,7 @@ def generate_pdf():
             fontSize=12,
             textColor=colors.HexColor('#3B82F6'),
             spaceAfter=10,
-            fontName='DejaVuSans-Bold'  # Используем жирный шрифт
+            fontName='DejaVuSans-Bold'
         ))
         
         styles.add(ParagraphStyle(
@@ -1226,8 +1241,12 @@ def generate_pdf():
             alignment=TA_LEFT,
             fontSize=10,
             leading=14,
-            spaceAfter=12,
-            fontName=base_font
+            spaceAfter=8,
+            fontName=base_font,
+            wordWrap='LTR',  # Разрешаем перенос слов
+            splitLongWords=True,  # Разбиваем длинные слова
+            allowWidows=0,  # Запрещаем "висячие" строки
+            allowOrphans=0
         ))
         
         styles.add(ParagraphStyle(
@@ -1247,7 +1266,7 @@ def generate_pdf():
             textColor=colors.HexColor('#1E40AF'),
             spaceAfter=6,
             spaceBefore=10,
-            fontName='DejaVuSans-Bold'  # Используем жирный шрифт
+            fontName='DejaVuSans-Bold'
         ))
         
         # Стиль для выделенных пунктов
@@ -1298,7 +1317,7 @@ def generate_pdf():
             ('BACKGROUND', (0, 1), (-1, -1), colors.white),
             ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB')),
             ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB')),
-            ('FONTNAME', (0, 1), (-1, -1), base_font)  # Указываем шрифт для всех ячеек
+            ('FONTNAME', (0, 1), (-1, -1), base_font)
         ]))
         
         elements.append(metrics_table)
@@ -1367,7 +1386,7 @@ def generate_pdf():
                 ('BACKGROUND', (0, 1), (-1, -1), colors.white),
                 ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB')),
                 ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB')),
-                ('FONTNAME', (0, 1), (-1, -1), base_font)  # Указываем шрифт для всех ячеек
+                ('FONTNAME', (0, 1), (-1, -1), base_font)
             ]))
             
             elements.append(top_table)
