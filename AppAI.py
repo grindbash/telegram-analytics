@@ -1143,7 +1143,7 @@ async def search_channels(query):
     return results
 
 
-@@app.route('/generate_pdf', methods=['POST'])
+@app.route('/generate_pdf', methods=['POST'])
 def generate_pdf():
     """Генерация PDF отчета с поддержкой кириллицы"""
     try:
