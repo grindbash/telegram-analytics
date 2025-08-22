@@ -976,12 +976,12 @@ def perform_analysis():
         # Запускаем анализ
         result = loop.run_until_complete(analytics.analyze_channel(channel_identifier, hours_back))
         
-        # Если нет ошибки, добавляем ИИ анализ
-        if 'error' not in result:
-            logger.info("Запуск ИИ анализа...")
-            ai_report = loop.run_until_complete(analytics.generate_ai_analysis(result))
-            logger.info(f"ИИ анализ завершен, длина: {len(ai_report)} символов")
-            result['ai_report'] = ai_report
+        # # Если нет ошибки, добавляем ИИ анализ
+        # if 'error' not in result:
+            # logger.info("Запуск ИИ анализа...")
+            # ai_report = loop.run_until_complete(analytics.generate_ai_analysis(result))
+            # logger.info(f"ИИ анализ завершен, длина: {len(ai_report)} символов")
+            # result['ai_report'] = ai_report
         
         return jsonify(result)
         
