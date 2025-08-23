@@ -1154,38 +1154,31 @@ async def search_channels(query):
 @app.route('/generate_pdf', methods=['POST'])
 def generate_pdf():
     """Генерация PDF отчета с поддержкой кириллицы"""
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import letter
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
     try:
         # Регистрация кириллических шрифтов
         try:
-            # Путь к шрифтам в статических файлах
-            font_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'fonts')
-            os.makedirs(font_dir, exist_ok=True)
+            # Используем стандартные шрифты ReportLab с кириллической поддержкой
+            from reportlab.pdfbase import pdfmetrics
+            from reportlab.pdfbase.ttfonts import TTFont
+            from reportlab.lib.fonts import addMapping
             
-            # Основной шрифт
-            font_path = os.path.join(font_dir, 'DejaVuSans.ttf')
-            if not os.path.exists(font_path):
-                logger.info("Скачивание кириллического шрифта...")
-                font_url = "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf"
-                response = requests.get(font_url)
-                with open(font_path, 'wb') as f:
-                    f.write(response.content)
+            # Регистрируем стандартные шрифты
+            pdfmetrics.registerFont(TTFont('DejaVuSans', 'DejaVuSans.ttf'))
+            pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', 'DejaVuSans-Bold.ttf'))
             
-            # Жирный шрифт
-            bold_font_path = os.path.join(font_dir, 'DejaVuSans-Bold.ttf')
-            if not os.path.exists(bold_font_path):
-                logger.info("Скачивание жирного кириллического шрифта...")
-                bold_font_url = "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans-Bold.ttf"
-                response = requests.get(bold_font_url)
-                with open(bold_font_path, 'wb') as f:
-                    f.write(response.content)
+            # Устанавливаем mapping для поддержки кириллицы
+            addMapping('DejaVuSans', 0, 0, 'DejaVuSans')
+            addMapping('DejaVuSans', 1, 0, 'DejaVuSans-Bold')
             
-            # Регистрируем шрифты
-            pdfmetrics.registerFont(TTFont('DejaVuSans', font_path))
-            pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', bold_font_path))
             base_font = 'DejaVuSans'
             logger.info("Кириллические шрифты зарегистрированы")
         except Exception as e:
             logger.error(f"Ошибка шрифта: {str(e)}")
+            # Используем стандартные шрифты с кириллической поддержкой
             base_font = 'Helvetica'
 
         data = request.get_json()
@@ -1205,8 +1198,7 @@ def generate_pdf():
             rightMargin=40,
             leftMargin=40,
             topMargin=40,
-            bottomMargin=40,
-            allowSplitting=1  # Разрешаем разбиение контента на страницы
+            bottomMargin=40
         )
         
         # Стили для текста с кириллическим шрифтом
