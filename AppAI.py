@@ -25,6 +25,13 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from io import BytesIO
 import base64
+import time
+import hashlib
+from flask import make_response
+
+# Глобальный кэш для хранения сгенерированных PDF (временное решение)
+pdf_cache = {}
+CACHE_EXPIRY = 300  # 5 минут
 
 # Устанавливаем UTF-8 как стандартную кодировку
 if sys.stdout.encoding != 'UTF-8':
@@ -137,7 +144,23 @@ class TelegramAnalytics:
         self.client = None
         self.moscow_tz = pytz.timezone('Europe/Moscow')
         self._loop = None
-    
+        
+    def _format_content_type(self, content_type):
+        """Форматирование названий типов контента"""
+        type_mapping = {
+            'mixed_media_with_text': 'текст + медиа',
+            'text': 'текст',
+            'photo': 'фото',
+            'video': 'видео',
+            'audio': 'аудио',
+            'document': 'документ',
+            'media': 'медиа',
+            'media_album': 'медиа-альбом',
+            'photo_with_text': 'фото + текст',
+            'video_with_text': 'видео + текст'
+        }
+        return type_mapping.get(content_type, content_type)  
+        
     def _get_loop(self):
         """Получаем текущий event loop"""
         if self._loop is None or self._loop.is_closed():
@@ -236,59 +259,35 @@ class TelegramAnalytics:
         """Генерация ИИ анализа через OpenRouter"""
         try:
             prompt = f"""
-            Ты эксперт по анализу Telegram каналов с опытом в data-driven маркетинге. Проанализируй предоставленные данные и дай развернутые рекомендации.
+            Act as a data-driven Telegram channel analyst. Provide a comprehensive, detailed, and structured analysis based on the data below. Do not shorten the answer.
 
-            Контекст:
-            - Канал: {report_data['channel_info']['title']}
-            - Подписчиков: {report_data['channel_info']['subscribers']}
-            - Период анализа: {report_data['analysis_period']['hours_back']} часов
+            Context:
+            - Channel: {report_data['channel_info']['title']}
+            - Subscribers: {report_data['channel_info']['subscribers']}
+            - Analysis Period: {report_data['analysis_period']['hours_back']} hours
 
-            Данные для анализа:
+            Data:
             {json.dumps(report_data['summary'], indent=2, ensure_ascii=False)}
 
-            Требования к анализу:
+            **Analysis Requirements:**
 
-            1. Ключевые тенденции:
-            - Проанализируй динамику роста/падения подписчиков
-            - Выяви закономерности в активности аудитории
-            - Определи аномалии в статистике (резкие скачки или падения)
-            - Оцени сезонность активности
+            1.  **Key Trends:** Analyze subscriber growth/churn dynamics, audience activity patterns, anomalies (spikes/drops), and seasonality.
+            2.  **Content Recommendations:** Identify top-performing content formats (text, video, polls) and themes with highest engagement. Suggest optimal content mix and strategy improvements.
+            3.  **Posting Schedule:** Determine best times/days for audience engagement. Provide a concrete posting schedule considering time zones. Recommend posting frequency.
+            4.  **Engagement Assessment:** Calculate Engagement Rate (ER = (Reactions + Comments + Reposts) / Subscribers * 100%). Compare to niche benchmarks. Analyze CTR and other metrics. Identify outliers.
+            5.  **Growth Forecast:** Provide 7/30 day growth projections based on current metrics. Suggest growth levers (ads, collaborations). Assess viral potential and new audience acquisition strategies.
 
-            2. Рекомендации по контенту:
-            - Определи наиболее эффективные форматы контента (текст, видео, опросы и т.д.)
-            - Проанализируй темы с максимальной вовлеченностью
-            - Предложи оптимальное соотношение типов контента
-            - Дай рекомендации по улучшению контент-стратегии
+            **Additional Insights:**
+            - Propose A/B tests.
+            - Suggest Telegram SEO tips.
+            - Analyze monetization potential.
+            - Recommend analytics automation tools.
 
-            3. Оптимальное время публикаций:
-            - Определи часы и дни максимальной активности аудитории
-            - Предложи конкретное расписание публикаций
-            - Учитывай временные зоны основной аудитории
-            - Дай рекомендации по частоте публикаций
-
-            4. Оценка вовлеченности:
-            - Рассчитай Engagement Rate (ER) по формуле: (Реакции + Комментарии + Репосты) / Подписчики * 100%
-            - Сравни показатели с бенчмарками для ниши
-            - Проанализируй CTR и другие метрики вовлеченности
-            - Выяви посты с аномально высокой/низкой вовлеченностью
-
-            5. Прогноз роста:
-            - На основе текущих метрик построй прогноз на 7/30 дней
-            - Предложи меры для ускорения роста (реклама, коллаборации и т.д.)
-            - Оцени потенциал вирального роста
-            - Дай рекомендации по привлечению новой аудитории
-
-            Дополнительно:
-            - Предложи A/B тесты для улучшения показателей
-            - Дай рекомендации по SEO в Telegram
-            - Проанализируй потенциал монетизации
-            - Предложи инструменты для автоматизации аналитики
-
-            Формат вывода:
-            1. Краткое резюме по каналу
-            2. Детальный анализ по каждому пункту
-            3. Конкретные рекомендации для внедрения
-            4. Прогноз развития на ближайший период
+            **Response Format:** 
+            1.  Executive Summary
+            2.  Detailed Analysis (follow the order of requirements 1-5)
+            3.  Actionable Recommendations
+            4.  Final Forecast & Conclusions
             """
             
             # Логируем длину промпта
@@ -1162,18 +1161,50 @@ async def search_channels(query):
     
     return results
 
+@app.route('/download_pdf', methods=['GET'])
+def download_pdf():
+    """Прямое скачивание PDF файла для мобильных устройств"""
+    try:
+        # Получаем параметры из запроса
+        cache_key = request.args.get('key')
+        
+        if not cache_key:
+            return jsonify({'error': 'Не указан ключ доступа'}), 400
+        
+        # Проверяем наличие PDF в кэше
+        if cache_key not in pdf_cache:
+            return jsonify({'error': 'PDF не найден или срок действия ссылки истек'}), 404
+        
+        cached_data = pdf_cache[cache_key]
+        
+        # Проверяем не истекло ли время кэша
+        if time.time() - cached_data['timestamp'] > CACHE_EXPIRY:
+            # Удаляем из кэша
+            del pdf_cache[cache_key]
+            return jsonify({'error': 'Срок действия ссылки истек'}), 404
+        
+        # Возвращаем PDF как файл для скачивания
+        response = make_response(cached_data['pdf_data'])
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'attachment; filename={cached_data["filename"]}'
+        
+        # УДАЛЯЕМ ИЗ КЭША ПОСЛЕ УСПЕШНОЙ ОТДАЧИ
+        del pdf_cache[cache_key]
+        logger.info(f"PDF успешно скачан и удален из кэша: {cached_data['filename']}")
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Ошибка скачивания PDF: {str(e)}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
 
 @app.route('/generate_pdf', methods=['POST'])
 def generate_pdf():
     """Генерация PDF отчета с поддержкой кириллицы"""
-    from reportlab.pdfgen import canvas
-    from reportlab.lib.pagesizes import letter
-    from reportlab.pdfbase import pdfmetrics
-    from reportlab.pdfbase.ttfonts import TTFont
     try:
         # Регистрация кириллических шрифтов
         try:
-            # Используем стандартные шрифты ReportLab с кириллической поддержкой
             from reportlab.pdfbase import pdfmetrics
             from reportlab.pdfbase.ttfonts import TTFont
             from reportlab.lib.fonts import addMapping
@@ -1203,97 +1234,60 @@ def generate_pdf():
         # Создаем буфер для PDF
         buffer = BytesIO()
         
-        # Инициализация документа
+        # Инициализация документа с увеличенными полями
         doc = SimpleDocTemplate(
             buffer,
             pagesize=letter,
-            rightMargin=40,
-            leftMargin=40,
-            topMargin=40,
-            bottomMargin=40
+            rightMargin=30,
+            leftMargin=30,
+            topMargin=30,
+            bottomMargin=30,
         )
         
-        # Стили для текста с кириллическим шрифтом
+        # Стили для текста
         styles = getSampleStyleSheet()
         
-        # Основные стили с указанием шрифта
+        # Основные стили
         styles.add(ParagraphStyle(
-            name='Center',
-            alignment=TA_CENTER,
-            fontSize=14,
-            spaceAfter=20,
-            fontName='DejaVuSans-Bold'
-        ))
-        
-        styles.add(ParagraphStyle(
-            name='Header',
-            alignment=TA_LEFT,
-            fontSize=12,
-            textColor=colors.HexColor('#3B82F6'),
-            spaceAfter=10,
-            fontName='DejaVuSans-Bold'
-        ))
-        
-        styles.add(ParagraphStyle(
-            name='Body',
-            alignment=TA_LEFT,
-            fontSize=10,
-            leading=14,
-            spaceAfter=8,
+            name='NormalRU',
             fontName=base_font,
-            wordWrap='LTR',  # Разрешаем перенос слов
-            splitLongWords=True,  # Разбиваем длинные слова
-            allowWidows=0,  # Запрещаем "висячие" строки
-            allowOrphans=0
-        ))
-        
-        styles.add(ParagraphStyle(
-            name='Small',
-            alignment=TA_LEFT,
-            fontSize=8,
-            textColor=colors.grey,
-            spaceAfter=5,
-            fontName=base_font
-        ))
-        
-        # Стиль для подзаголовков ИИ анализа
-        styles.add(ParagraphStyle(
-            name='Subheader',
-            alignment=TA_LEFT,
-            fontSize=11,
-            textColor=colors.HexColor('#1E40AF'),
-            spaceAfter=6,
-            spaceBefore=10,
-            fontName='DejaVuSans-Bold'
-        ))
-        
-        # Стиль для выделенных пунктов
-        styles.add(ParagraphStyle(
-            name='Emphasis',
-            alignment=TA_LEFT,
             fontSize=10,
-            textColor=colors.HexColor('#1C64F2'),
-            spaceAfter=6,
-            fontName=base_font
+            leading=12,
+            spaceAfter=6
+        ))
+        
+        styles.add(ParagraphStyle(
+            name='HeaderRU',
+            fontName='DejaVuSans-Bold',
+            fontSize=14,
+            textColor=colors.HexColor('#3B82F6'),
+            spaceAfter=12
+        ))
+        
+        styles.add(ParagraphStyle(
+            name='SubheaderRU', 
+            fontName='DejaVuSans-Bold',
+            fontSize=12,
+            textColor=colors.HexColor('#2563EB'),
+            spaceAfter=8
         ))
 
-        # Элементы документа
         elements = []
         
         # Заголовок
         elements.append(Paragraph(
             f"Аналитический отчет: {report_data['channel_info']['title']}",
-            styles['Center']
+            styles['HeaderRU']
         ))
         
         # Период анализа
         elements.append(Paragraph(
             f"Период анализа: {report_data['analysis_period']['hours_back']} часов",
-            styles['Small']
+            styles['NormalRU']
         ))
         elements.append(Spacer(1, 20))
         
-        # Основные метрики
+        # Основные метрики - УВЕЛИЧИВАЕМ таблицу
         metrics = [
             ['Метрика', 'Значение'],
             ['Подписчиков', str(report_data['channel_info']['subscribers'])],
@@ -1304,79 +1298,105 @@ def generate_pdf():
             ['ER (подписчики)', f"{report_data['summary']['engagement_rate']['er_subscribers']}%"]
         ]
         
-        metrics_table = Table(metrics, colWidths=[200, 100])
+        metrics_table = Table(metrics, colWidths=[250, 100])  # Увеличиваем ширину
         metrics_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F3F4F6')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#1F2937')),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),  # Выравнивание по левому краю
             ('FONTNAME', (0, 0), (-1, 0), 'DejaVuSans-Bold'),
             ('FONTSIZE', (0, 0), (-1, 0), 10),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
             ('BACKGROUND', (0, 1), (-1, -1), colors.white),
             ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB')),
             ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB')),
-            ('FONTNAME', (0, 1), (-1, -1), base_font)
+            ('FONTNAME', (0, 1), (-1, -1), base_font),
+            ('WORDWRAP', (0, 0), (-1, -1), True)  # Включаем перенос слов
         ]))
         
         elements.append(metrics_table)
         elements.append(Spacer(1, 30))
         
-        # Рекомендации
-        elements.append(Paragraph("Рекомендации", styles['Header']))
+        # Рекомендации с поддержкой смайлов
+        elements.append(Paragraph("Рекомендации", styles['HeaderRU']))
         for rec in report_data.get('recommendations', []):
-            elements.append(Paragraph(f"• {rec}", styles['Body']))
+            # Заменяем названия типов контента
+            rec = rec.replace('mixed_media_with_text', 'текст + медиа')
+            rec = rec.replace('text', 'текст')
+            rec = rec.replace('photo', 'фото')
+            rec = rec.replace('video', 'видео')
+            rec = rec.replace('media', 'медиа')
+            
+            elements.append(Paragraph(f"• {rec}", styles['NormalRU']))
         elements.append(Spacer(1, 20))
         
-        # Анализ ИИ
+        # Анализ ИИ с корректным отображением
         if ai_report:
-            elements.append(Paragraph("ИИ Анализ", styles['Header']))
+            elements.append(Paragraph("ИИ Анализ", styles['HeaderRU']))
             
-            # Упрощенное форматирование ИИ анализа
-            # Разбиваем на абзацы и добавляем с соответствующими стилями
-            paragraphs = ai_report.split('\n\n')
+            # Обрабатываем ИИ анализ для корректного отображения
+            ai_paragraphs = []
+            current_paragraph = []
             
-            for para in paragraphs:
-                para = para.strip()
-                if not para:
+            for line in ai_report.split('\n'):
+                line = line.strip()
+                if not line:
+                    if current_paragraph:
+                        ai_paragraphs.append(' '.join(current_paragraph))
+                        current_paragraph = []
                     continue
-                    
-                # Заголовки
-                if para.startswith('###'):
-                    elements.append(Paragraph(para.replace('###', '').strip(), styles['Subheader']))
-                # Списки
-                elif para.startswith('- '):
-                    items = para.split('\n')
-                    for item in items:
-                        if item.startswith('- '):
-                            elements.append(Paragraph(f"• {item[2:].strip()}", styles['Body']))
-                    elements.append(Spacer(1, 10))
-                # Обычные абзацы
-                else:
-                    elements.append(Paragraph(para, styles['Body']))
-                    elements.append(Spacer(1, 10))
+                
+                # Заменяем маркдаун-разметку
+                line = line.replace('###', '').replace('####', '')
+                line = line.replace('**', '').replace('*', '')
+                
+                # Заменяем названия типов контента
+                line = line.replace('mixed_media_with_text', 'текст + медиа')
+                line = line.replace('text', 'текст')
+                
+                current_paragraph.append(line)
             
-            elements.append(Spacer(1, 20))
+            if current_paragraph:
+                ai_paragraphs.append(' '.join(current_paragraph))
+            
+            for para in ai_paragraphs:
+                if para.strip():
+                    elements.append(Paragraph(para, styles['NormalRU']))
+                    elements.append(Spacer(1, 8))
         
-        # Топ постов
+        # Топ постов - УВЕЛИЧИВАЕМ и настраиваем таблицу
         if report_data.get('top_posts'):
-            elements.append(Paragraph("Топ постов", styles['Header']))
-            top_posts_data = [
-                ['Дата', 'Просмотры', 'Тип', 'Превью']
-            ]
+            elements.append(Paragraph("Топ постов", styles['HeaderRU']))
+            
+            # Подготовка данных с переносом текста
+            top_posts_data = [['Дата', 'Просмотры', 'Тип', 'Превью']]
+            
             for post in report_data['top_posts'][:3]:
-                preview = post['text_preview'][:50] + '...' if len(post['text_preview']) > 50 else post['text_preview']
+                # Заменяем названия типов контента
+                content_type = post['content_type']
+                content_type = content_type.replace('mixed_media_with_text', 'текст + медиа')
+                content_type = content_type.replace('text', 'текст')
+                content_type = content_type.replace('photo', 'фото')
+                content_type = content_type.replace('video', 'видео')
+                
+                # Обрезаем превью для удобства чтения
+                preview = post['text_preview']
+                if len(preview) > 60:
+                    preview = preview[:57] + '...'
+                
                 top_posts_data.append([
                     post['date'],
                     str(post['views']),
-                    post['content_type'],
+                    content_type,
                     preview
                 ])
             
-            top_table = Table(top_posts_data, colWidths=[80, 60, 80, 200])
+            # Создаем таблицу с увеличенными размерами
+            top_table = Table(top_posts_data, colWidths=[80, 50, 80, 200])
             top_table.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F3F4F6')),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#1F2937')),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('ALIGN', (0, 0), (1, -1), 'CENTER'),
+                ('ALIGN', (2, 0), (-1, -1), 'LEFT'),
                 ('FONTNAME', (0, 0), (-1, 0), 'DejaVuSans-Bold'),
                 ('FONTSIZE', (0, 0), (-1, 0), 9),
                 ('FONTSIZE', (0, 1), (-1, -1), 8),
@@ -1384,7 +1404,10 @@ def generate_pdf():
                 ('BACKGROUND', (0, 1), (-1, -1), colors.white),
                 ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB')),
                 ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB')),
-                ('FONTNAME', (0, 1), (-1, -1), base_font)
+                ('FONTNAME', (0, 1), (-1, -1), base_font),
+                ('WORDWRAP', (0, 0), (-1, -1), True),  # Перенос слов
+                ('LEFTPADDING', (0, 0), (-1, -1), 4),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 4)
             ]))
             
             elements.append(top_table)
@@ -1397,15 +1420,59 @@ def generate_pdf():
         pdf_data = buffer.getvalue()
         buffer.close()
         
-        return jsonify({
-            'pdf_base64': base64.b64encode(pdf_data).decode('utf-8'),
-            'filename': f"{report_data['channel_info']['title']}_report.pdf"
-        })
+        filename = f"{report_data['channel_info']['title']}_report.pdf"
+        
+        # Создаем ключ для кэша
+        # После генерации PDF сохраняем в кэше
+        cache_key = hashlib.md5(f"{report_data['channel_info']['title']}_{time.time()}".encode()).hexdigest()
+        
+        pdf_cache[cache_key] = {
+            'pdf_data': pdf_data,
+            'filename': filename,
+            'timestamp': time.time()
+        }
+        
+        logger.info(f"PDF сохранен в кэше с ключом: {cache_key}")
+        
+        # Очищаем устаревшие файлы из кэша
+        cleanup_pdf_cache()
+        
+        # Проверяем, запрашивается ли прямой download (для мобильных устройств)
+        is_direct_download = request.args.get('direct') == 'true'
+        
+        if is_direct_download:
+            # Возвращаем PDF как файл для скачивания
+            response = make_response(pdf_data)
+            response.headers['Content-Type'] = 'application/pdf'
+            response.headers['Content-Disposition'] = f'attachment; filename={filename}'
+            return response
+        else:
+            # Возвращаем PDF как base64 (для стандартного использования) и ключ кэша
+            return jsonify({
+                'pdf_base64': base64.b64encode(pdf_data).decode('utf-8'),
+                'filename': filename,
+                'cache_key': cache_key
+            })
     
     except Exception as e:
         logger.error(f"Ошибка генерации PDF: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)}), 500
-        
+ 
+def cleanup_pdf_cache():
+    """Очистка устаревших PDF из кэша (только для подстраховки)"""
+    current_time = time.time()
+    keys_to_delete = []
+    
+    for key, data in pdf_cache.items():
+        if current_time - data['timestamp'] > CACHE_EXPIRY:
+            keys_to_delete.append(key)
+    
+    for key in keys_to_delete:
+        del pdf_cache[key]
+    
+    if keys_to_delete:
+        logger.info(f"Очищено {len(keys_to_delete)} устаревших PDF из кэша")
+ 
 # Отдача фронтенда
 @app.route('/')
 def home():

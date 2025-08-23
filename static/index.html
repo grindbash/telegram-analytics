@@ -135,6 +135,9 @@
             margin-bottom: 16px;
             text-align: center;
             position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
         }
 
         .channel-selector {
@@ -150,6 +153,7 @@
             display: flex;
             align-items: center;
             gap: 4px;
+            z-index: 10;
         }
 
         .channel-selector svg {
@@ -158,11 +162,15 @@
             fill: white;
         }
 
+        .header-main {
+            margin-top: 8px;
+            padding: 0 40px;
+        }
+
         .header h1 {
             font-size: 18px;
             font-weight: 600;
             margin-bottom: 4px;
-            padding-top: 6px;
         }
 
         .header p {
@@ -170,11 +178,38 @@
             opacity: 0.9;
         }
 
+        .header-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .period-selector {
+            margin: 0;
+        }
+
+        .period-select {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            padding: 6px 12px;
+            color: white;
+            font-size: 12px;
+            outline: none;
+            cursor: pointer;
+            width: 120px;
+        }
+
+        .period-select option {
+            background: var(--tg-theme-button-color, #3390ec);
+            color: white;
+        }
+
         .header-actions {
             display: flex;
             justify-content: center;
             gap: 8px;
-            margin-top: 8px;
         }
 
         .header-action {
@@ -194,28 +229,6 @@
             width: 14px;
             height: 14px;
             fill: white;
-        }
-
-        .period-selector {
-            margin: 8px 0;
-            text-align: center;
-        }
-
-        .period-select {
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 12px;
-            padding: 6px 12px;
-            color: white;
-            font-size: 12px;
-            outline: none;
-            cursor: pointer;
-            width: 120px;
-        }
-
-        .period-select option {
-            background: var(--tg-theme-button-color, #3390ec);
-            color: white;
         }
 
         .tabs {
@@ -475,53 +488,53 @@
         }
 
         .ai-content {
-			background: var(--tg-theme-secondary-bg-color, #f8f9fa);
-			padding: 20px;
-			border-radius: 12px;
-			font-size: 14px;
-			line-height: 1.6;
-			margin: 16px 0;
-			white-space: pre-wrap;
-			word-wrap: break-word;
-			overflow-wrap: break-word;
-			max-height: none;
-			overflow: visible;
-		}
+            background: var(--tg-theme-secondary-bg-color, #f8f9fa);
+            padding: 20px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.6;
+            margin: 16px 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            max-height: none;
+            overflow: visible;
+        }
 
-		.ai-content h3 {
-			margin: 20px 0 10px 0;
-			color: var(--tg-theme-button-color, #3B82F6);
-			font-size: 18px;
-			font-weight: 600;
-		}
+        .ai-content h3 {
+            margin: 20px 0 10px 0;
+            color: var(--tg-theme-button-color, #3B82F6);
+            font-size: 18px;
+            font-weight: 600;
+        }
 
-		.ai-content h4 {
-			margin: 16px 0 8px 0;
-			color: var(--tg-theme-button-color, #2563EB);
-			font-size: 16px;
-			font-weight: 600;
-		}
+        .ai-content h4 {
+            margin: 16px 0 8px 0;
+            color: var(--tg-theme-button-color, #2563EB);
+            font-size: 16px;
+            font-weight: 600;
+        }
 
-		.ai-content strong {
-			font-weight: 600;
-			color: var(--tg-theme-text-color, #000000);
-		}
+        .ai-content strong {
+            font-weight: 600;
+            color: var(--tg-theme-text-color, #000000);
+        }
 
-		.ai-content ul, .ai-content ol {
-			margin: 10px 0;
-			padding-left: 20px;
-		}
+        .ai-content ul, .ai-content ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
 
-		.ai-content li {
-			margin: 8px 0;
-			padding-left: 8px;
-		}
+        .ai-content li {
+            margin: 8px 0;
+            padding-left: 8px;
+        }
 
-		.ai-content hr {
-			margin: 20px 0;
-			border: 0;
-			border-top: 1px solid var(--tg-theme-hint-color, #e5e7eb);
-		}
+        .ai-content hr {
+            margin: 20px 0;
+            border: 0;
+            border-top: 1px solid var(--tg-theme-hint-color, #e5e7eb);
+        }
 
         .ai-loader {
             text-align: center;
@@ -611,7 +624,63 @@
             opacity: 0.8;
         }
 
-        @media (max-width: 480px) {
+        /* Мобильная адаптация */
+        @media (max-width: 768px) {
+            .header {
+                padding: 12px;
+                min-height: auto;
+                gap: 8px;
+            }
+            
+            .channel-selector {
+                position: absolute;
+                top: 8px;
+                left: 8px;
+                padding: 4px 6px;
+                font-size: 11px;
+            }
+            
+            .channel-selector span {
+                display: none;
+            }
+            
+            .header-main {
+                padding: 0 30px;
+                margin-top: 0;
+            }
+            
+            .header h1 {
+                font-size: 16px;
+                margin-bottom: 2px;
+            }
+            
+            .header p {
+                font-size: 11px;
+            }
+            
+            .header-controls {
+                gap: 8px;
+            }
+            
+            .period-select {
+                width: 100px;
+                font-size: 11px;
+                padding: 4px 8px;
+            }
+            
+            .header-actions {
+                gap: 4px;
+            }
+            
+            .header-action {
+                padding: 3px 8px;
+                font-size: 11px;
+            }
+            
+            .header-action span {
+                display: none;
+            }
+            
             .stats-grid {
                 grid-template-columns: 1fr;
             }
@@ -628,6 +697,29 @@
                 flex-direction: column;
             }
         }
+
+        @media (max-width: 480px) {
+            .header-main {
+                padding: 0 20px;
+            }
+            
+            .header h1 {
+                font-size: 14px;
+            }
+            
+            .header p {
+                font-size: 10px;
+            }
+            
+            .channel-selector {
+                padding: 3px 5px;
+            }
+            
+            .channel-selector svg {
+                width: 12px;
+                height: 12px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -637,23 +729,23 @@
         <button id="start-analysis" class="tg-button haptic-feedback">Выбрать канал для анализа</button>
     </div>
 
-		<div id="channel-modal" class="welcome-screen" style="display: none;">
-		<h1 class="welcome-title">Выберите канал</h1>
-		<div class="search-box">
-			<input type="text" id="channel-search" placeholder="Введите @username или название" 
-				   style="width: 100%; padding: 12px; border-radius: 12px; border: none; margin-bottom: 16px; font-size: 16px;">
-			<button id="search-button" class="tg-button haptic-feedback">Найти каналы</button>
-		</div>
-		
-		<div style="margin-top: 20px; text-align: center;">
-			<p>Или попробуйте:</p>
-			<button id="direct-link" class="tg-button haptic-feedback" style="margin-top: 10px;">
-				Перейти к анализу по @username
-			</button>
-		</div>
-		
-		<div id="search-results" class="search-results"></div>
-	</div>
+    <div id="channel-modal" class="welcome-screen" style="display: none;">
+        <h1 class="welcome-title">Выберите канал</h1>
+        <div class="search-box">
+            <input type="text" id="channel-search" placeholder="Введите @username или название" 
+                   style="width: 100%; padding: 12px; border-radius: 12px; border: none; margin-bottom: 16px; font-size: 16px;">
+            <button id="search-button" class="tg-button haptic-feedback">Найти каналы</button>
+        </div>
+        
+        <div style="margin-top: 20px; text-align: center;">
+            <p>Или попробуйте:</p>
+            <button id="direct-link" class="tg-button haptic-feedback" style="margin-top: 10px;">
+                Перейти к анализу по @username
+            </button>
+        </div>
+        
+        <div id="search-results" class="search-results"></div>
+    </div>
 
     <div id="loading-modal" class="loading-modal">
         <div class="loading-content">
@@ -667,34 +759,40 @@
         <div class="header">
             <div class="channel-selector haptic-feedback" id="change-channel">
                 <svg viewBox="0 0 24 24">
-                    <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                    <!-- Стрелка влево -->
+                    <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
                 </svg>
                 <span>Сменить</span>
             </div>
-            <h1 id="channel-name">Загрузка...</h1>
-            <p id="analysis-period">Выберите период анализа</p>
             
-            <div class="period-selector">
-                <select id="period-select" class="period-select">
-                    <option value="24">24 часа</option>
-                    <option value="72">3 дня</option>
-                    <option value="168">7 дней</option>
-                    <option value="720">30 дней</option>
-                </select>
+            <div class="header-main">
+                <h1 id="channel-name">Загрузка...</h1>
+                <p id="analysis-period">Выберите период анализа</p>
             </div>
             
-            <div class="header-actions">
-                <div class="header-action haptic-feedback" id="refresh-data">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
-                    </svg>
-                    Обновить
+            <div class="header-controls">
+                <div class="period-selector">
+                    <select id="period-select" class="period-select">
+                        <option value="24">24 часа</option>
+                        <option value="72">3 дня</option>
+                        <option value="168">7 дней</option>
+                        <option value="720">30 дней</option>
+                    </select>
                 </div>
-                <div class="header-action haptic-feedback" id="download-pdf">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
-                    </svg>
-                    PDF
+                
+                <div class="header-actions">
+                    <div class="header-action haptic-feedback" id="refresh-data">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                        </svg>
+                        <span>Обновить</span>
+                    </div>
+                    <div class="header-action haptic-feedback" id="download-pdf">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                        </svg>
+                        <span>PDF</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -754,7 +852,7 @@
             document.documentElement.style.setProperty('--tg-theme-secondary-bg-color', secondaryBgColor);
             document.documentElement.style.setProperty('--tg-theme-hint-color', hintColor);
         }
-		
+        
         // Глобальные переменные
         let contentChart, timeChart;
         let currentData = null;
@@ -784,7 +882,7 @@
                 default: return `Привет, ${firstName}!`;
             }
         }
-		
+        
         // Функция показа модального окна загрузки
         function showLoadingModal(text) {
             const loadingModal = document.getElementById('loading-modal');
@@ -816,7 +914,7 @@
                 if (mainContent) mainContent.classList.add('visible');
             }, 50);
         }
-		
+        
         // Получить цвет для ER в зависимости от значения
         function getERColor(value) {
             if (value === 0 || value === null) return 'er-unknown';
@@ -1157,50 +1255,50 @@
             }).join('');
         }
 
-		function updateAITab(data) {
-			const tab = document.getElementById('ai');
-			if (!tab) return;
-			
-			if (data.emptyData) {
-				tab.innerHTML = '<div class="error">Нет данных для ИИ анализа</div>';
-				return;
-			}
-			
-			const hasAIAnalysis = currentAIData !== null && currentAIData !== undefined;
-			const formattedAIData = hasAIAnalysis ? formatAIAnalysis(currentAIData) : '';
-			
-			tab.innerHTML = `
-				<div class="card">
-					<h3 class="card-title">🤖 ИИ Анализ канала</h3>
-					
-					<div id="ai-content" class="ai-content">
-						${hasAIAnalysis ? formattedAIData : 'ИИ анализ еще не выполнен. Нажмите кнопку "Запросить анализ" для получения детальных рекомендаций.'}
-					</div>
-					
-					<div class="ai-actions">
-						<button id="request-ai" class="ai-button haptic-feedback" ${hasAIAnalysis ? 'style="display: none;"' : ''}>
-							<svg viewBox="0 0 24 24">
-								<path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v2h8z"/>
-							</svg>
-							Запросить ИИ анализ
-						</button>
-						
-						<button id="regenerate-ai" class="ai-button haptic-feedback" ${!hasAIAnalysis ? 'style="display: none;"' : ''}>
-							<svg viewBox="0 0 24 24">
-								<path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
-							</svg>
-							Обновить анализ
-						</button>
-					</div>
-				</div>
-			`;
-			
-			const requestBtn = document.getElementById('request-ai');
-			if (requestBtn) requestBtn.addEventListener('click', requestAIAnalysis);
-			
-			const regenerateBtn = document.getElementById('regenerate-ai');
-			if (regenerateBtn) regenerateBtn.addEventListener('click', requestAIAnalysis);
-		}
+        function updateAITab(data) {
+            const tab = document.getElementById('ai');
+            if (!tab) return;
+            
+            if (data.emptyData) {
+                tab.innerHTML = '<div class="error">Нет данных для ИИ анализа</div>';
+                return;
+            }
+            
+            const hasAIAnalysis = currentAIData !== null && currentAIData !== undefined;
+            const formattedAIData = hasAIAnalysis ? formatAIAnalysis(currentAIData) : '';
+            
+            tab.innerHTML = `
+                <div class="card">
+                    <h3 class="card-title">🤖 ИИ Анализ канала</h3>
+                    
+                    <div id="ai-content" class="ai-content">
+                        ${hasAIAnalysis ? formattedAIData : 'ИИ анализ еще не выполнен. Нажмите кнопку "Запросить анализ" для получения детальных рекомендаций.'}
+                    </div>
+                    
+                    <div class="ai-actions">
+                        <button id="request-ai" class="ai-button haptic-feedback" ${hasAIAnalysis ? 'style="display: none;"' : ''}>
+                            <svg viewBox="0 0 24 24">
+                                <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v2h8z"/>
+                            </svg>
+                            Запросить ИИ анализ
+                        </button>
+                        
+                        <button id="regenerate-ai" class="ai-button haptic-feedback" ${!hasAIAnalysis ? 'style="display: none;"' : ''}>
+                            <svg viewBox="0 0 24 24">
+                                <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                            </svg>
+                            Обновить анализ
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            const requestBtn = document.getElementById('request-ai');
+            if (requestBtn) requestBtn.addEventListener('click', requestAIAnalysis);
+            
+            const regenerateBtn = document.getElementById('regenerate-ai');
+            if (regenerateBtn) regenerateBtn.addEventListener('click', requestAIAnalysis);
+        }
 
         // Инициализация графиков
         function initContentChart(labels, data) {
@@ -1282,7 +1380,7 @@
             });
         }
 
-        // Вспомогательные функции
+        // Вспомогательные функций
         function showLoading() {
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.innerHTML = '<div class="loading">Загрузка данных...</div>';
@@ -1295,21 +1393,21 @@
             });
         }
 
-		function formatAIAnalysis(text) {
-			// Заменяем Markdown-разметку на HTML
-			return text
-				.replace(/^### (.*$)/gim, '<h3 style="margin: 20px 0 10px 0; color: #3B82F6; font-size: 18px; font-weight: 600;">$1</h3>')
-				.replace(/^#### (.*$)/gim, '<h4 style="margin: 16px 0 8px 0; color: #2563EB; font-size: 16px; font-weight: 600;">$1</h4>')
-				.replace(/\*\*(.*?)\*\*/g, '<strong style="font-weight: 600;">$1</strong>')
-				.replace(/\*(.*?)\*/g, '<em>$1</em>')
-				.replace(/^- (.*$)/gim, '<li style="margin: 8px 0; padding-left: 16px; list-style-type: disc;">$1</li>')
-				.replace(/^(\d+)\. (.*$)/gim, '<li style="margin: 8px 0; padding-left: 16px; list-style-type: decimal;">$2</li>')
-				.replace(/<li>(.*?)<\/li>/g, '<ul style="margin: 10px 0; padding-left: 20px;">$&</ul>')
-				.replace(/<\/ul>\s*<ul>/g, '')
-				.replace(/---/g, '<hr style="margin: 20px 0; border: 0; border-top: 1px solid #e5e7eb;">')
-				.replace(/\n\n/g, '<br><br>')
-				.replace(/\n/g, '<br>');
-		}
+        function formatAIAnalysis(text) {
+            // Заменяем Markdown-разметку на HTML
+            return text
+                .replace(/^### (.*$)/gim, '<h3 style="margin: 20px 0 10px 0; color: #3B82F6; font-size: 18px; font-weight: 600;">$1</h3>')
+                .replace(/^#### (.*$)/gim, '<h4 style="margin: 16px 0 8px 0; color: #2563EB; font-size: 16px; font-weight: 600;">$1</h4>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong style="font-weight: 600;">$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/^- (.*$)/gim, '<li style="margin: 8px 0; padding-left: 16px; list-style-type: disc;">$1</li>')
+                .replace(/^(\d+)\. (.*$)/gim, '<li style="margin: 8px 0; padding-left: 16px; list-style-type: decimal;">$2</li>')
+                .replace(/<li>(.*?)<\/li>/g, '<ul style="margin: 10px 0; padding-left: 20px;">$&</ul>')
+                .replace(/<\/ul>\s*<ul>/g, '')
+                .replace(/---/g, '<hr style="margin: 20px 0; border: 0; border-top: 1px solid #e5e7eb;">')
+                .replace(/\n\n/g, '<br><br>')
+                .replace(/\n/g, '<br>');
+        }
 
         function switchTab(event, tabName) {
             if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
@@ -1336,193 +1434,212 @@
         }
 
         // Запрос ИИ анализа
-		async function requestAIAnalysis() {
-			try {
-				if (!currentData) {
-					throw new Error('Нет данных для анализа');
-				}
-				
-				const aiTab = document.getElementById('ai');
-				if (!aiTab) return;
-				
-				aiTab.innerHTML = `
-					<div class="ai-loader">
-						<img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcDl1eGJ0Z2F6dW1yZzR0dWZzZ3R5Z2Z6eGZ6eGZ6eGZ6eGZ6eGZ6eCZlcD12MV9pbnRlcm5hbF9naWZfbyfaWQmY3Q9Zw/3o7bu3XilJ5BOiSGic/giphy.gif" alt="AI Thinking">
-						<p>ИИ анализирует данные...</p>
-					</div>
-				`;
-				
-				showLoadingModal("ИИ анализирует данные...");
-				
-				const response = await fetch(`${API_BASE_URL}/ai_analyze`, {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-						'Accept': 'application/json'
-					},
-					body: JSON.stringify({
-						report: currentData
-					})
-				});
-				
-				// Проверяем статус ответа
-				if (!response.ok) {
-					const errorText = await response.text();
-					throw new Error(errorText || `Ошибка сервера: ${response.status}`);
-				}
-				
-				const result = await response.json();
-				
-				if (response.ok) {
-					currentAIData = result.ai_report || "ИИ анализ не дал результатов";
-					
-					// Добавляем информацию о кэшировании, если есть
-					if (result.cached) {
-						currentAIData = "♻️ Этот анализ был загружен из кэша (создан менее часа назад)\n\n" + currentAIData;
-					}
-					
-					// Применяем форматирование к ИИ-анализу
-					const formattedAIData = formatAIAnalysis(currentAIData);
-					
-					// Обновляем вкладку с отформатированным контентом
-					updateAITab(currentData);
-					
-					// Убеждаемся, что контент правильно отображается
-					setTimeout(() => {
-						const aiContent = document.getElementById('ai-content');
-						if (aiContent) {
-							aiContent.innerHTML = formattedAIData;
-						}
-					}, 100);
-					
-				} else {
-					throw new Error(result.error || 'Ошибка ИИ анализа');
-				}
-			} catch (error) {
-				console.error('Ошибка ИИ анализа:', error);
-				const aiTab = document.getElementById('ai');
-				if (aiTab) {
-					aiTab.innerHTML = `
-						<div class="error">
-							<p>${error.message}</p>
-							<button onclick="requestAIAnalysis()" class="tg-button" style="margin-top: 10px;">
-								Попробовать снова
-							</button>
-						</div>
-					`;
-				}
-			} finally {
-				hideLoadingModal();
-			}
-		}
-
-        // Генерация PDF
-        async function generatePDF() {
+        async function requestAIAnalysis() {
             try {
                 if (!currentData) {
-                    throw new Error('Нет данных для генерации PDF');
+                    throw new Error('Нет данных для анализа');
                 }
                 
-                showLoadingModal("Генерирую PDF отчет...");
+                const aiTab = document.getElementById('ai');
+                if (!aiTab) return;
                 
-                const response = await fetch(`${API_BASE_URL}/generate_pdf`, {
+                aiTab.innerHTML = `
+                    <div class="ai-loader">
+                        <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcDl1eGJ0Z2F6dW1yZzR0dWZzZ3R5Z2Z6eGZ6eGZ6eGZ6eGZ6eGZ6eCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7bu3XilJ5BOiSGic/giphy.gif" alt="AI Thinking">
+                        <p>ИИ анализирует данные...</p>
+                    </div>
+                `;
+                
+                showLoadingModal("ИИ анализирует данные...");
+                
+                const response = await fetch(`${API_BASE_URL}/ai_analyze`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Accept': 'application/json'
                     },
                     body: JSON.stringify({
-                        report: currentData,
-                        ai_report: currentAIData || ''
+                        report: currentData
                     })
                 });
+                
+                // Проверяем статус ответа
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(errorText || `Ошибка сервера: ${response.status}`);
+                }
                 
                 const result = await response.json();
                 
                 if (response.ok) {
-                    // Скачивание PDF
-                    const link = document.createElement('a');
-                    link.href = `data:application/pdf;base64,${result.pdf_base64}`;
-                    link.download = result.filename;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
+                    currentAIData = result.ai_report || "ИИ анализ не дал результатов";
                     
-                    if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
+                    // Добавляем информацию о кэшировании, если есть
+                    if (result.cached) {
+                        currentAIData = "♻️ Этот анализ был загружен из кэша (создан менее часа назад)\n\n" + currentAIData;
+                    }
+                    
+                    // Применяем форматирование к ИИ-анализу
+                    const formattedAIData = formatAIAnalysis(currentAIData);
+                    
+                    // Обновляем вкладку с отформатированным контентом
+                    updateAITab(currentData);
+                    
+                    // Убеждаемся, что контент правильно отображается
+                    setTimeout(() => {
+                        const aiContent = document.getElementById('ai-content');
+                        if (aiContent) {
+                            aiContent.innerHTML = formattedAIData;
+                        }
+                    }, 100);
+                    
                 } else {
-                    throw new Error(result.error || 'Ошибка генерации PDF');
+                    throw new Error(result.error || 'Ошибка ИИ анализа');
                 }
             } catch (error) {
-                console.error('Ошибка генерации PDF:', error);
-                alert(`Ошибка: ${error.message}`);
+                console.error('Ошибка ИИ анализа:', error);
+                const aiTab = document.getElementById('ai');
+                if (aiTab) {
+                    aiTab.innerHTML = `
+                        <div class="error">
+                            <p>${error.message}</p>
+                            <button onclick="requestAIAnalysis()" class="tg-button" style="margin-top: 10px;">
+                                Попробовать снова
+                            </button>
+                        </div>
+                    `;
+                }
             } finally {
                 hideLoadingModal();
             }
         }
 
-        // Поиск каналов
-		async function searchChannels(query) {
+        // Генерация PDF
+		async function generatePDF() {
 			try {
-				const resultsContainer = document.getElementById('search-results');
-				if (!resultsContainer) return;
+				if (!currentData) {
+					throw new Error('Нет данных для генерации PDF');
+				}
 				
-				resultsContainer.innerHTML = '<div class="search-result">Идет поиск...</div>';
+				showLoadingModal("Генерирую PDF отчет...");
 				
-				const response = await fetch(`${API_BASE_URL}/find_channel`, {
+				const response = await fetch(`${API_BASE_URL}/generate_pdf`, {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
-						'Accept': 'application/json'
 					},
-					body: JSON.stringify({ query })
+					body: JSON.stringify({
+						report: currentData,
+						ai_report: currentAIData || ''
+					})
 				});
-
-				const responseText = await response.text();
 				
-				if (!response.ok) {
-					let errorData;
-					try {
-						errorData = JSON.parse(responseText);
-					} catch (e) {
-						throw new Error(`Ошибка сервера: ${response.status}`);
+				const result = await response.json();
+				
+				if (response.ok) {
+					// Проверяем, является ли устройство мобильным и находится ли в Telegram
+					const isMobileTelegram = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) && 
+											window.Telegram && window.Telegram.WebApp;
+					
+					if (isMobileTelegram) {
+						// Для мобильного Telegram используем специальный метод
+						const downloadUrl = `${API_BASE_URL}/download_pdf?key=${result.cache_key}`;
+						
+						// Открываем ссылку для скачивания
+						Telegram.WebApp.openLink(downloadUrl);
+						
+						// Показываем сообщение пользователю
+						Telegram.WebApp.showAlert('PDF отчет готов к скачиванию. Откроется новая вкладка.');
+					} else {
+						// Для десктопных браузеров используем стандартный метод
+						const link = document.createElement('a');
+						link.href = `data:application/pdf;base64,${result.pdf_base64}`;
+						link.download = result.filename;
+						document.body.appendChild(link);
+						link.click();
+						document.body.removeChild(link);
+						
+						if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
 					}
-					throw new Error(errorData.error || `Ошибка сервера: ${response.status}`);
-				}
-
-				const result = JSON.parse(responseText);
-				
-				if (result.error) {
-					throw new Error(result.error);
-				}
-				
-				resultsContainer.innerHTML = '';
-				
-				if (result.results && result.results.length > 0) {
-					result.results.forEach(channel => {
-						const resultElement = document.createElement('div');
-						resultElement.className = 'search-result';
-						resultElement.innerHTML = `
-							<div class="search-result-title">${channel.title}</div>
-							<div class="search-result-username">@${channel.username || 'нет username'}</div>
-						`;
-						resultElement.addEventListener('click', () => {
-							selectChannel(channel);
-						});
-						resultsContainer.appendChild(resultElement);
-					});
 				} else {
-					resultsContainer.innerHTML = '<div class="search-result">Каналы не найдены</div>';
+					throw new Error(result.error || 'Ошибка генерации PDF');
 				}
 			} catch (error) {
-				console.error('Ошибка поиска каналов:', error);
-				const resultsContainer = document.getElementById('search-results');
-				if (resultsContainer) {
-					resultsContainer.innerHTML = `
-						<div class="search-result error">Ошибка: ${error.message || 'Произошла ошибка при поиске'}</div>
-					`;
+				console.error('Ошибка генерации PDF:', error);
+				
+				// Показываем ошибку в зависимости от платформы
+				if (window.Telegram && Telegram.WebApp) {
+					Telegram.WebApp.showAlert(`Ошибка: ${error.message}`);
+				} else {
+					alert(`Ошибка: ${error.message}`);
 				}
+			} finally {
+				hideLoadingModal();
 			}
 		}
+        // Поиск каналов
+        async function searchChannels(query) {
+            try {
+                const resultsContainer = document.getElementById('search-results');
+                if (!resultsContainer) return;
+                
+                resultsContainer.innerHTML = '<div class="search-result">Идет поиск...</div>';
+                
+                const response = await fetch(`${API_BASE_URL}/find_channel`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ query })
+                });
+
+                const responseText = await response.text();
+                
+                if (!response.ok) {
+                    let errorData;
+                    try {
+                        errorData = JSON.parse(responseText);
+                    } catch (e) {
+                        throw new Error(`Ошибка сервера: ${response.status}`);
+                    }
+                    throw new Error(errorData.error || `Ошибка сервера: ${response.status}`);
+                }
+
+                const result = JSON.parse(responseText);
+                
+                if (result.error) {
+                    throw new Error(result.error);
+                }
+                
+                resultsContainer.innerHTML = '';
+                
+                if (result.results && result.results.length > 0) {
+                    result.results.forEach(channel => {
+                        const resultElement = document.createElement('div');
+                        resultElement.className = 'search-result';
+                        resultElement.innerHTML = `
+                            <div class="search-result-title">${channel.title}</div>
+                            <div class="search-result-username">@${channel.username || 'нет username'}</div>
+                        `;
+                        resultElement.addEventListener('click', () => {
+                            selectChannel(channel);
+                        });
+                        resultsContainer.appendChild(resultElement);
+                    });
+                } else {
+                    resultsContainer.innerHTML = '<div class="search-result">Каналы не найдены</div>';
+                }
+            } catch (error) {
+                console.error('Ошибка поиска каналов:', error);
+                const resultsContainer = document.getElementById('search-results');
+                if (resultsContainer) {
+                    resultsContainer.innerHTML = `
+                        <div class="search-result error">Ошибка: ${error.message || 'Произошла ошибка при поиске'}</div>
+                    `;
+                }
+            }
+        }
 
         // Выбор канала
         function selectChannel(channel) {
