@@ -296,7 +296,9 @@ class TelegramAnalytics:
             
             headers = {
                 "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://your-domain.com",
+                "X-Title": "Telegram Analytics"
             }
             
             payload = {
@@ -306,7 +308,8 @@ class TelegramAnalytics:
                     {"role": "user", "content": prompt}
                 ],
                 "temperature": 0.7,
-                "max_tokens": 2000
+                "max_tokens": 4000,
+                "stream": False
             }
             
             logger.info(f"Отправка запроса к OpenRouter: {OPENROUTER_API_URL}")
@@ -316,16 +319,21 @@ class TelegramAnalytics:
                 OPENROUTER_API_URL,
                 headers=headers,
                 json=payload,
-                timeout=60
+                timeout=120
             )
             
             # Детальное логирование ответа
             logger.info(f"Статус ответа OpenRouter: {response.status_code}")
-            logger.info(f"Заголовки ответа: {response.headers}")
             
             try:
                 response_data = response.json()
                 logger.info(f"Тело ответа (первые 500 символов): {str(response_data)[:500]}")
+                
+                # Проверяем, не был ли ответ обрезан
+                finish_reason = response_data.get('choices', [{}])[0].get('finish_reason', '')
+                if finish_reason == 'length':
+                    logger.warning("Ответ ИИ был обрезан из-за ограничения длины токенов")
+                    
             except json.JSONDecodeError:
                 logger.error(f"Не удалось распарсить JSON: {response.text[:500]}")
                 return "Ошибка: неверный формат ответа ИИ"
@@ -338,7 +346,11 @@ class TelegramAnalytics:
             
             # Проверяем возможные форматы ответа
             if 'choices' in response_data and response_data['choices']:
-                return response_data['choices'][0]['message']['content']
+                content = response_data['choices'][0]['message']['content']
+                # Добавляем предупреждение, если ответ был обрезан
+                if finish_reason == 'length':
+                    content += "\n\n⚠️ Внимание: анализ был сокращен из-за ограничений длины. Для полного анализа используйте платные модели с большим контекстом."
+                return content
             elif 'message' in response_data:
                 return response_data['message']
             elif 'text' in response_data:

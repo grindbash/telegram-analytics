@@ -475,18 +475,53 @@
         }
 
         .ai-content {
-			background: var(--tg-theme-bg-color, #f8f9fa);
-			padding: 16px;
+			background: var(--tg-theme-secondary-bg-color, #f8f9fa);
+			padding: 20px;
 			border-radius: 12px;
 			font-size: 14px;
-			line-height: 1.5;
+			line-height: 1.6;
 			margin: 16px 0;
-			white-space: pre-wrap; 
-			word-wrap: break-word; 
+			white-space: pre-wrap;
+			word-wrap: break-word;
 			overflow-wrap: break-word;
 			max-height: none;
 			overflow: visible;
-        }
+		}
+
+		.ai-content h3 {
+			margin: 20px 0 10px 0;
+			color: var(--tg-theme-button-color, #3B82F6);
+			font-size: 18px;
+			font-weight: 600;
+		}
+
+		.ai-content h4 {
+			margin: 16px 0 8px 0;
+			color: var(--tg-theme-button-color, #2563EB);
+			font-size: 16px;
+			font-weight: 600;
+		}
+
+		.ai-content strong {
+			font-weight: 600;
+			color: var(--tg-theme-text-color, #000000);
+		}
+
+		.ai-content ul, .ai-content ol {
+			margin: 10px 0;
+			padding-left: 20px;
+		}
+
+		.ai-content li {
+			margin: 8px 0;
+			padding-left: 8px;
+		}
+
+		.ai-content hr {
+			margin: 20px 0;
+			border: 0;
+			border-top: 1px solid var(--tg-theme-hint-color, #e5e7eb);
+		}
 
         .ai-loader {
             text-align: center;
@@ -1131,10 +1166,7 @@
 				return;
 			}
 			
-			// Определяем, есть ли у нас ИИ анализ для текущих данных
 			const hasAIAnalysis = currentAIData !== null && currentAIData !== undefined;
-			
-			// ИСПОЛЬЗОВАТЬ ФОРМАТИРОВАНИЕ:
 			const formattedAIData = hasAIAnalysis ? formatAIAnalysis(currentAIData) : '';
 			
 			tab.innerHTML = `
@@ -1142,7 +1174,7 @@
 					<h3 class="card-title">🤖 ИИ Анализ канала</h3>
 					
 					<div id="ai-content" class="ai-content">
-						${hasAIAnalysis ? currentAIData : 'ИИ анализ еще не выполнен. Нажмите кнопку "Запросить анализ" для получения детальных рекомендаций.'}
+						${hasAIAnalysis ? formattedAIData : 'ИИ анализ еще не выполнен. Нажмите кнопку "Запросить анализ" для получения детальных рекомендаций.'}
 					</div>
 					
 					<div class="ai-actions">
@@ -1264,11 +1296,17 @@
         }
 
 		function formatAIAnalysis(text) {
+			// Заменяем Markdown-разметку на HTML
 			return text
-				.replace(/### (.*?)(\n|$)/g, '<h4 style="margin: 16px 0 8px 0; color: #3B82F6;">$1</h4>')
-				.replace(/#### (.*?)(\n|$)/g, '<h5 style="margin: 12px 0 6px 0; color: #2563EB;">$1</h5>')
-				.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-				.replace(/\* (.*?)(\n|$)/g, '<li style="margin: 8px 0; padding-left: 16px; list-style-type: disc;">$1</li>')
+				.replace(/^### (.*$)/gim, '<h3 style="margin: 20px 0 10px 0; color: #3B82F6; font-size: 18px; font-weight: 600;">$1</h3>')
+				.replace(/^#### (.*$)/gim, '<h4 style="margin: 16px 0 8px 0; color: #2563EB; font-size: 16px; font-weight: 600;">$1</h4>')
+				.replace(/\*\*(.*?)\*\*/g, '<strong style="font-weight: 600;">$1</strong>')
+				.replace(/\*(.*?)\*/g, '<em>$1</em>')
+				.replace(/^- (.*$)/gim, '<li style="margin: 8px 0; padding-left: 16px; list-style-type: disc;">$1</li>')
+				.replace(/^(\d+)\. (.*$)/gim, '<li style="margin: 8px 0; padding-left: 16px; list-style-type: decimal;">$2</li>')
+				.replace(/<li>(.*?)<\/li>/g, '<ul style="margin: 10px 0; padding-left: 20px;">$&</ul>')
+				.replace(/<\/ul>\s*<ul>/g, '')
+				.replace(/---/g, '<hr style="margin: 20px 0; border: 0; border-top: 1px solid #e5e7eb;">')
 				.replace(/\n\n/g, '<br><br>')
 				.replace(/\n/g, '<br>');
 		}
@@ -1309,7 +1347,7 @@
 				
 				aiTab.innerHTML = `
 					<div class="ai-loader">
-						<img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcDl1eGJ0Z2F6dW1yZzR0dWZzZ3R5Z2Z6eGZ6eGZ6eGZ6eGZ6eGZ6eCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7bu3XilJ5BOiSGic/giphy.gif" alt="AI Thinking">
+						<img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcDl1eGJ0Z2F6dW1yZzR0dWZzZ3R5Z2Z6eGZ6eGZ6eGZ6eGZ6eGZ6eCZlcD12MV9pbnRlcm5hbF9naWZfbyfaWQmY3Q9Zw/3o7bu3XilJ5BOiSGic/giphy.gif" alt="AI Thinking">
 						<p>ИИ анализирует данные...</p>
 					</div>
 				`;
@@ -1327,6 +1365,12 @@
 					})
 				});
 				
+				// Проверяем статус ответа
+				if (!response.ok) {
+					const errorText = await response.text();
+					throw new Error(errorText || `Ошибка сервера: ${response.status}`);
+				}
+				
 				const result = await response.json();
 				
 				if (response.ok) {
@@ -1337,7 +1381,20 @@
 						currentAIData = "♻️ Этот анализ был загружен из кэша (создан менее часа назад)\n\n" + currentAIData;
 					}
 					
+					// Применяем форматирование к ИИ-анализу
+					const formattedAIData = formatAIAnalysis(currentAIData);
+					
+					// Обновляем вкладку с отформатированным контентом
 					updateAITab(currentData);
+					
+					// Убеждаемся, что контент правильно отображается
+					setTimeout(() => {
+						const aiContent = document.getElementById('ai-content');
+						if (aiContent) {
+							aiContent.innerHTML = formattedAIData;
+						}
+					}, 100);
+					
 				} else {
 					throw new Error(result.error || 'Ошибка ИИ анализа');
 				}
@@ -1345,7 +1402,14 @@
 				console.error('Ошибка ИИ анализа:', error);
 				const aiTab = document.getElementById('ai');
 				if (aiTab) {
-					aiTab.innerHTML = `<div class="error">${error.message}</div>`;
+					aiTab.innerHTML = `
+						<div class="error">
+							<p>${error.message}</p>
+							<button onclick="requestAIAnalysis()" class="tg-button" style="margin-top: 10px;">
+								Попробовать снова
+							</button>
+						</div>
+					`;
 				}
 			} finally {
 				hideLoadingModal();
