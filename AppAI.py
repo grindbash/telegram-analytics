@@ -1350,63 +1350,72 @@ def generate_pdf():
         # Анализ ИИ - сохраняем смайлы как есть
         # Замените блок обработки AI-отчета на этот:
 
-        if ai_report:
-            elements.append(Paragraph("ИИ Анализ", styles['HeaderRU']))
-            elements.append(Spacer(1, 12))
+if ai_report:
+    elements.append(Paragraph("ИИ Анализ", styles['HeaderRU']))
+    elements.append(Spacer(1, 12))
 
-            # Если есть пометка о кэше — добавляем её
-            if "кэша" in ai_report:
-                cache_line = ai_report.split('\n')[0]  # Берём первую строку (кэш)
-                elements.append(Paragraph(cache_line, styles['SmallRU']))
-                elements.append(Spacer(1, 12))
-                # Убираем строку кэша из основного отчёта
-                ai_report = '\n'.join(ai_report.split('\n')[1:])
+    # Если есть пометка о кэше — добавляем её
+    if "кэша" in ai_report:
+        cache_line = ai_report.split('\n')[0]  # Берём первую строку (кэш)
+        elements.append(Paragraph(cache_line, styles['SmallRU']))
+        elements.append(Spacer(1, 12))
+        # Убираем строку кэша из основного отчёта
+        ai_report = '\n'.join(ai_report.split('\n')[1:])
 
-            # Обрабатываем AI отчет - заменяем англоязычные термины
-            ai_report = ai_report.replace('mixed_media_with_text', 'текст + медиа')
-            ai_report = ai_report.replace('text', 'текст')
-            ai_report = ai_report.replace('photo', 'фото')
-            ai_report = ai_report.replace('video', 'видео')
-            ai_report = ai_report.replace('media', 'медиа')
+    # Обрабатываем AI отчет - заменяем англоязычные термины
+    ai_report = ai_report.replace('mixed_media_with_text', 'текст + медиа')
+    ai_report = ai_report.replace('text', 'текст')
+    ai_report = ai_report.replace('photo', 'фото')
+    ai_report = ai_report.replace('video', 'видео')
+    ai_report = ai_report.replace('media', 'медиа')
 
-            # Разделяем отчет на секции по двойным переносам
-            sections = ai_report.split('\n\n')
+    # Разделяем отчет на секции по двойным переносам
+    sections = ai_report.split('\n\n')
 
-            for section in sections:
-                section = section.strip()
-                if not section:
+    for section in sections:
+        section = section.strip()
+        if not section:
+            continue
+
+        # Удаляем все ** из секции
+        section = section.replace('**', '')
+
+        # Разделяем секцию на строки
+        lines = section.split('\n')
+        
+        # Проверяем, является ли первая строка заголовком (начинается с цифры)
+        if lines and re.match(r'^\d+\.', lines[0].strip()):
+            # Это заголовок - делаем жирным
+            elements.append(Paragraph(lines[0].strip(), styles['BoldRU']))
+            elements.append(Spacer(1, 8))
+            
+            # Обрабатываем остальные строки как обычный текст
+            for line in lines[1:]:
+                line = line.strip()
+                if not line:
                     continue
-
-                # Удаляем все ** из секции
-                section = section.replace('**', '')
-
-                # Обрабатываем заголовки с цифрами (например, "2.1 Ключевые тенденции:")
-                if re.match(r'^\d+\.\d+', section) or re.match(r'^\d+\.', section):
-                    elements.append(Paragraph(section, styles['BoldRU']))
-                    elements.append(Spacer(1, 6))
-                elif section.startswith('**') and section.endswith('**'):
-                    clean_section = section.replace('**', '')
-                    elements.append(Paragraph(clean_section, styles['BoldRU']))
-                    elements.append(Spacer(1, 6))
-                else:
-                    # Обычный текст - обрабатываем списки
-                    lines = section.split('\n')
-                    for line in lines:
-                        line = line.strip()
-                        if not line:
-                            continue
-                        
-                        if line.startswith('-') or line.startswith('•'):
-                            # Элемент списка
-                            elements.append(Paragraph(f"• {line[1:].strip()}", styles['NormalRU']))
-                        elif re.match(r'^\d+\.\d+', line) or re.match(r'^\d+\.', line):
-                            # Заголовок в строке
-                            elements.append(Paragraph(f"<b>{line}</b>", styles['NormalRU']))
-                        else:
-                            # Обычная строка
-                            elements.append(Paragraph(line, styles['NormalRU']))
                 
-                elements.append(Spacer(1, 8))
+                if line.startswith('-'):
+                    # Элемент списка
+                    elements.append(Paragraph(f"• {line[1:].strip()}", styles['NormalRU']))
+                else:
+                    # Обычная строка
+                    elements.append(Paragraph(line, styles['NormalRU']))
+        else:
+            # Вся секция - обычный текст
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                
+                if line.startswith('-'):
+                    # Элемент списка
+                    elements.append(Paragraph(f"• {line[1:].strip()}", styles['NormalRU']))
+                else:
+                    # Обычная строка
+                    elements.append(Paragraph(line, styles['NormalRU']))
+        
+        elements.append(Spacer(1, 8))
         
         # Топ постов - сохраняем смайлы как есть
         if report_data.get('top_posts'):
