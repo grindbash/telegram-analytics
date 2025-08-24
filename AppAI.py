@@ -28,6 +28,7 @@ import base64
 import time
 import hashlib
 from flask import make_response
+from urllib.parse import quote
 
 # Глобальный кэш для хранения сгенерированных PDF (временное решение)
 pdf_cache = {}
@@ -161,6 +162,16 @@ class TelegramAnalytics:
         }
         return type_mapping.get(content_type, content_type)  
         
+    def get_safe_filename(filename):
+        """Создает безопасное имя файла для HTTP заголовков"""
+        try:
+            return quote(filename)
+        except:
+            try:
+                return filename.encode('ascii', 'ignore').decode('ascii') or 'telegram_report.pdf'
+            except:
+                return 'telegram_report.pdf'
+                
     def _get_loop(self):
         """Получаем текущий event loop"""
         if self._loop is None or self._loop.is_closed():
@@ -259,35 +270,54 @@ class TelegramAnalytics:
         """Генерация ИИ анализа через OpenRouter"""
         try:
             prompt = f"""
-            Act as a data-driven Telegram channel analyst. Provide a comprehensive, detailed, and structured analysis based on the data below. Do not shorten the answer.
+            Ты эксперт по анализу Telegram каналов с опытом в data-driven маркетинге. Проанализируй предоставленные данные и дай развернутые рекомендации.
 
-            Context:
-            - Channel: {report_data['channel_info']['title']}
-            - Subscribers: {report_data['channel_info']['subscribers']}
-            - Analysis Period: {report_data['analysis_period']['hours_back']} hours
+            Контекст:
+            - Канал: {report_data['channel_info']['title']}
+            - Подписчиков: {report_data['channel_info']['subscribers']}
+            - Период анализа: {report_data['analysis_period']['hours_back']} часов
 
-            Data:
+            Данные для анализа:
             {json.dumps(report_data['summary'], indent=2, ensure_ascii=False)}
 
-            **Analysis Requirements:**
+            Требования к анализу:
 
-            1.  **Key Trends:** Analyze subscriber growth/churn dynamics, audience activity patterns, anomalies (spikes/drops), and seasonality.
-            2.  **Content Recommendations:** Identify top-performing content formats (text, video, polls) and themes with highest engagement. Suggest optimal content mix and strategy improvements.
-            3.  **Posting Schedule:** Determine best times/days for audience engagement. Provide a concrete posting schedule considering time zones. Recommend posting frequency.
-            4.  **Engagement Assessment:** Calculate Engagement Rate (ER = (Reactions + Comments + Reposts) / Subscribers * 100%). Compare to niche benchmarks. Analyze CTR and other metrics. Identify outliers.
-            5.  **Growth Forecast:** Provide 7/30 day growth projections based on current metrics. Suggest growth levers (ads, collaborations). Assess viral potential and new audience acquisition strategies.
+            1. Ключевые тенденции:
+            - Проанализируй динамику роста/падения подписчиков
+            - Выяви закономерности в активности аудитории
+            - Определи аномалии в статистике (резкие скачки или падения)
 
-            **Additional Insights:**
-            - Propose A/B tests.
-            - Suggest Telegram SEO tips.
-            - Analyze monetization potential.
-            - Recommend analytics automation tools.
+            2. Рекомендации по контенту:
+            - Определи наиболее эффективные форматы контента (текст, видео, опросы и т.д.)
+            - Проанализируй темы с максимальной вовлеченностью
+            - Предложи оптимальное соотношение типов контента
+            - Дай рекомендации по улучшению контент-стратегии
 
-            **Response Format:** 
-            1.  Executive Summary
-            2.  Detailed Analysis (follow the order of requirements 1-5)
-            3.  Actionable Recommendations
-            4.  Final Forecast & Conclusions
+            3. Оптимальное время публикаций:
+            - Определи часы и дни максимальной активности аудитории
+            - Предложи конкретное расписание публикаций
+            - Дай рекомендации по частоте публикаций
+
+            4. Оценка вовлеченности:
+            - Рассчитай Engagement Rate (ER) по формуле: (Реакции + Комментарии + Репосты) / Подписчики * 100%
+            - Сравни показатели с бенчмарками для ниши
+            - Проанализируй CTR и другие метрики вовлеченности
+            - Выяви посты с аномально высокой/низкой вовлеченностью
+
+            5. Прогноз роста:
+            - На основе текущих метрик построй прогноз на 7/30 дней
+            - Оцени потенциал вирального роста
+            - Дай рекомендации по привлечению новой аудитории
+
+            Дополнительно:
+            - Дай рекомендации по SEO в Telegram
+            - Предложи инструменты для автоматизации аналитики
+
+            Формат вывода:
+            1. Краткое резюме по каналу
+            2. Детальный анализ по каждому пункту, но кратко и по факту изложи его
+            3. Конкретные рекомендации для внедрения
+            4. Прогноз развития на ближайший период
             """
             
             # Логируем длину промпта
@@ -306,8 +336,9 @@ class TelegramAnalytics:
                     {"role": "system", "content": "Ты эксперт по анализу Telegram каналов с опытом в data-driven маркетинге. Проанализируй предоставленные данные и дай развернутые рекомендации."},
                     {"role": "user", "content": prompt}
                 ],
-                "temperature": 0.7,
-                "max_tokens": 4000,
+                "temperature": 0.5,
+                "max_tokens": 16000,
+                "repetition_penalty": 1.05,
                 "stream": False
             }
             
@@ -1186,7 +1217,10 @@ def download_pdf():
         # Возвращаем PDF как файл для скачивания
         response = make_response(cached_data['pdf_data'])
         response.headers['Content-Type'] = 'application/pdf'
-        response.headers['Content-Disposition'] = f'attachment; filename={cached_data["filename"]}'
+        
+        # Безопасное имя файла
+        safe_filename = get_safe_filename(cached_data['filename'])
+        response.headers['Content-Disposition'] = f'attachment; filename="{safe_filename}"'
         
         # УДАЛЯЕМ ИЗ КЭША ПОСЛЕ УСПЕШНОЙ ОТДАЧИ
         del pdf_cache[cache_key]
@@ -1197,7 +1231,6 @@ def download_pdf():
     except Exception as e:
         logger.error(f"Ошибка скачивания PDF: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)}), 500
-
 
 @app.route('/generate_pdf', methods=['POST'])
 def generate_pdf():
@@ -1221,6 +1254,7 @@ def generate_pdf():
             logger.info("Кириллические шрифты зарегистрированы")
         except Exception as e:
             logger.error(f"Ошибка шрифта: {str(e)}")
+            
             # Используем стандартные шрифты с кириллической поддержкой
             base_font = 'Helvetica'
 
@@ -1370,24 +1404,24 @@ def generate_pdf():
             # Подготовка данных с переносом текста
             top_posts_data = [['Дата', 'Просмотры', 'Тип', 'Превью']]
             
-            for post in report_data['top_posts'][:3]:
+            for post in report_data['top_posts'][:5]:
                 # Заменяем названия типов контента
-                content_type = post['content_type']
+                content_type = post.get('content_type', '')  # Защита от отсутствия ключа
                 content_type = content_type.replace('mixed_media_with_text', 'текст + медиа')
                 content_type = content_type.replace('text', 'текст')
                 content_type = content_type.replace('photo', 'фото')
                 content_type = content_type.replace('video', 'видео')
                 
                 # Обрезаем превью для удобства чтения
-                preview = post['text_preview']
+                preview = post.get('text_preview', '')  # Защита от отсутствия ключа
                 if len(preview) > 60:
                     preview = preview[:57] + '...'
                 
                 top_posts_data.append([
-                    post['date'],
-                    str(post['views']),
-                    content_type,
-                    preview
+                    str(post.get('date', '')),         # Явное преобразование в строку
+                    str(post.get('views', 0)),         # Явное преобразование в строку
+                    str(content_type),                 # Явное преобразование в строку
+                    str(preview)                       # Явное преобразование в строку
                 ])
             
             # Создаем таблицу с увеличенными размерами
