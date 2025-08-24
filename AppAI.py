@@ -281,7 +281,11 @@ class TelegramAnalytics:
         try:
             prompt = f"""
             Ты эксперт по анализу Telegram каналов с опытом в data-driven маркетинге. Проанализируй предоставленные данные и дай развернутые рекомендации.
-
+                Ты не описываешь процесс мышления.
+                Ты сразу выдаёшь готовый, структурированный отчёт на основе данных.
+                Не используй фразы вроде 'начну с', 'теперь проверю', 'я думаю'.
+                Начни ответ с пункта '1. Краткое резюме по каналу'.
+                Ответ должен быть профессиональным, полным и без 'воды'.
             Контекст:
             - Канал: {report_data['channel_info']['title']}
             - Подписчиков: {report_data['channel_info']['subscribers']}
@@ -1299,6 +1303,15 @@ def generate_pdf():
             fontSize=12,
             textColor=colors.HexColor('#2563EB'),
             spaceAfter=8
+        ))
+
+        styles.add(ParagraphStyle(
+            name='SmallRU',
+            fontName=base_font,
+            fontSize=8,
+            textColor=colors.HexColor('#666666'),
+            spaceAfter=4,
+            leading=10
         ))
 
         elements = []
