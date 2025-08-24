@@ -44,19 +44,25 @@ except:
     logger.warning("Шрифты DejaVuSans не найдены. Кириллица в PDF может отображаться некорректно.")
     CYRILLIC_FONT_AVAILABLE = False
 
-def get_safe_filename(filename):
-    """Создает безопасное имя файла для HTTP заголовков"""
+def get_safe_filename(channel_info):
+    """Создает безопасное имя файла на основе username канала"""
     try:
-        # Для кириллических имен файлов
-        safe_name = filename.encode('utf-8').decode('latin-1', errors='ignore')
+        # Получаем username из информации о канале
+        username = channel_info.get('username', '')
+        if username:
+            # Если username начинается с @, убираем его
+            if username.startswith('@'):
+                username = username[1:]
+            # Используем username как основу для имени файла
+            safe_name = f"{username}_report.pdf"
+        else:
+            # Если username отсутствует, используем ID канала
+            channel_id = channel_info.get('id', '')
+            safe_name = f"channel_{channel_id}_report.pdf"
         
-        # Заменяем проблемные символы
+        # Заменяем все небезопасные символы
         safe_name = re.sub(r'[^\w\-_.]', '_', safe_name)
         
-        # Убедимся, что есть расширение
-        if not safe_name.endswith('.pdf'):
-            safe_name += '.pdf'
-            
         return safe_name
     except:
         return 'telegram_report.pdf'
@@ -1261,6 +1267,16 @@ def generate_pdf():
             spaceAfter=4,
             leading=10
         ))
+        
+        # Добавляем стиль для жирного текста
+        styles.add(ParagraphStyle(
+            name='BoldRU',
+            fontName=bold_font,
+            fontSize=11,
+            leading=13,
+            spaceAfter=8,
+            spaceBefore=12
+        ))
 
         # Определяем стили для мобильных устройств
         user_agent = request.headers.get('User-Agent', '')
@@ -1346,6 +1362,13 @@ def generate_pdf():
                 # Убираем строку кэша из основного отчёта
                 ai_report = '\n'.join(ai_report.split('\n')[1:])
 
+            # Обрабатываем AI отчет - заменяем англоязычные термины
+            ai_report = ai_report.replace('mixed_media_with_text', 'текст + медиа')
+            ai_report = ai_report.replace('text', 'текст')
+            ai_report = ai_report.replace('photo', 'фото')
+            ai_report = ai_report.replace('video', 'видео')
+            ai_report = ai_report.replace('media', 'медиа')
+
             # Разделяем отчет на секции по двойным переносам
             sections = ai_report.split('\n\n')
 
@@ -1354,15 +1377,31 @@ def generate_pdf():
                 if not section:
                     continue
 
-                # Если секция начинается с цифры (например, "1. Краткое резюме") — это заголовок
-                if re.match(r'^\d+\.', section):
-                    elements.append(Paragraph(section, styles['SubheaderRU']))
-                # Если секция содержит только заголовок без текста — пропускаем лишние переносы
-                elif len(section) < 100 and not section.startswith('-'):
-                    elements.append(Paragraph(section, styles['SubheaderRU']))
+                # Обрабатываем заголовки с цифрами (например, "2.1 Ключевые тенденции:")
+                if re.match(r'^\d+\.\d+', section) or re.match(r'^\d+\.', section):
+                    elements.append(Paragraph(section, styles['BoldRU']))
+                    elements.append(Spacer(1, 6))
+                elif section.startswith('**') and section.endswith('**'):
+                    clean_section = section.replace('**', '')
+                    elements.append(Paragraph(clean_section, styles['BoldRU']))
+                    elements.append(Spacer(1, 6)
                 else:
-                    # Обычный абзац — добавляем как есть
-                    elements.append(Paragraph(section, styles['NormalRU']))
+                    # Обычный текст - обрабатываем списки
+                    lines = section.split('\n')
+                    for line in lines:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        
+                        if line.startswith('-') or line.startswith('•'):
+                            # Элемент списка
+                            elements.append(Paragraph(f"• {line[1:].strip()}", styles['NormalRU']))
+                        elif re.match(r'^\d+\.\d+', line) or re.match(r'^\d+\.', line):
+                            # Заголовок в строке
+                            elements.append(Paragraph(f"<b>{line}</b>", styles['NormalRU']))
+                        else:
+                            # Обычная строка
+                            elements.append(Paragraph(line, styles['NormalRU']))
                 
                 elements.append(Spacer(1, 8))
         
@@ -1400,7 +1439,7 @@ def generate_pdf():
         pdf_data = buffer.getvalue()
         buffer.close()
         
-        filename = f"{report_data['channel_info']['title']}_report.pdf"
+        filename = get_safe_filename(report_data['channel_info'])
         
         # Создаем ключ для кэша
         cache_key = hashlib.md5(f"{report_data['channel_info']['title']}_{time.time()}".encode()).hexdigest()
