@@ -1230,10 +1230,15 @@ def download_pdf():
         cache_key = request.args.get('key')
         
         if not cache_key:
+            logger.error("Не указан ключ доступа для скачивания PDF")
             return jsonify({'error': 'Не указан ключ доступа'}), 400
+        
+        logger.info(f"Запрос на скачивание PDF с ключом: {cache_key}")
+        logger.info(f"Доступные ключи в кэше: {list(pdf_cache.keys())}")
         
         # Проверяем наличие PDF в кэше
         if cache_key not in pdf_cache:
+            logger.error(f"PDF с ключом {cache_key} не найден в кэше")
             return jsonify({'error': 'PDF не найден или срок действия ссылки истек'}), 404
         
         cached_data = pdf_cache[cache_key]
@@ -1242,6 +1247,7 @@ def download_pdf():
         if time.time() - cached_data['timestamp'] > CACHE_EXPIRY:
             # Удаляем из кэша
             del pdf_cache[cache_key]
+            logger.error(f"Срок действия ключа {cache_key} истек")
             return jsonify({'error': 'Срок действия ссылки истек'}), 404
         
         # Возвращаем PDF как файл для скачивания
@@ -1249,17 +1255,10 @@ def download_pdf():
         response.headers['Content-Type'] = 'application/pdf'
         
         # Безопасное имя файла
-        # Безопасное имя файла
         safe_filename = get_safe_filename(cached_data['filename'])
-        
-        response = make_response(cached_data['pdf_data'])
-        response.headers['Content-Type'] = 'application/pdf'
         response.headers['Content-Disposition'] = f'attachment; filename="{safe_filename}"'
-        response.headers['Content-Disposition'] += f"; filename*=utf-8''{quote(safe_filename)}"
         
-        # УДАЛЯЕМ ИЗ КЭША ПОСЛЕ УСПЕШНОЙ ОТДАЧИ
-        del pdf_cache[cache_key]
-        logger.info(f"PDF успешно скачан и удален из кэша: {cached_data['filename']}")
+        logger.info(f"PDF успешно отправлен: {cached_data['filename']}")
         
         return response
         
@@ -1531,6 +1530,13 @@ def home():
 @app.route('/<path:filename>')
 def serve_static(filename):
     return send_from_directory('static', filename)
+
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
 
 if __name__ == '__main__':
     # Создаем event loop

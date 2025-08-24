@@ -232,35 +232,46 @@
         }
 
         .tabs {
-            display: flex;
-            background: var(--tg-theme-secondary-bg-color, #f8f9fa);
-            border-radius: 8px;
-            padding: 4px;
-            margin-bottom: 16px;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
+			display: flex;
+			background: var(--tg-theme-secondary-bg-color, #f8f9fa);
+			border-radius: 8px;
+			padding: 4px;
+			margin-bottom: 16px;
+			overflow-x: auto;
+			-webkit-overflow-scrolling: touch;
+			gap: 4px; /* Добавляем равномерный отступ между вкладками */
+		}
 
-        .tab {
-            flex: 1;
-            min-width: 80px;
-            padding: 8px 12px;
-            text-align: center;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-            white-space: nowrap;
-            background: transparent;
-            border: none;
-            color: var(--tg-theme-text-color, #000000);
-        }
+		.tab {
+			flex: 1;
+			min-width: 0; /* Разрешаем сжатие */
+			padding: 8px 6px; /* Уменьшаем горизонтальные отступы */
+			text-align: center;
+			border-radius: 6px;
+			font-size: 11px; /* Немного уменьшаем размер шрифта */
+			font-weight: 500;
+			cursor: pointer;
+			transition: all 0.2s;
+			white-space: nowrap;
+			background: transparent;
+			border: none;
+			color: var(--tg-theme-text-color, #000000);
+			overflow: hidden;
+			text-overflow: ellipsis;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: 4px;
+			line-height: 1.2;
+		}
 
-        .tab.active {
-            background: var(--tg-theme-button-color, #3390ec);
-            color: var(--tg-theme-button-text-color, white);
-        }
+		.tab.active {
+			background: var(--tg-theme-button-color, #3390ec);
+			color: var(--tg-theme-button-text-color, white);
+			transform: none; /* Убираем трансформацию для активной вкладки */
+			margin: 0; /* Убираем возможные отступы */
+			box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+		}
 
         .card {
             background: var(--tg-theme-secondary-bg-color, #ffffff);
@@ -720,6 +731,36 @@
                 height: 12px;
             }
         }
+		/* Мобильная адаптация */
+		@media (max-width: 768px) {
+			.tabs {
+				gap: 2px;
+				padding: 3px;
+			}
+			
+			.tab {
+				padding: 6px 4px;
+				font-size: 10px;
+				min-width: 50px;
+			}
+		}
+
+		@media (max-width: 480px) {
+			.tab {
+				font-size: 9px;
+				padding: 5px 3px;
+			}
+			
+			/* Скрываем текст на очень маленьких экранах, оставляем только иконки */
+			.tab span {
+				display: none;
+			}
+			
+			.tab::before {
+				content: attr(data-icon);
+				font-size: 12px;
+			}
+		}
     </style>
 </head>
 <body>
@@ -798,13 +839,23 @@
         </div>
 
         <!-- Navigation Tabs -->
-        <div class="tabs">
-            <button class="tab active haptic-feedback" onclick="switchTab(event, 'overview')">📈 Обзор</button>
-            <button class="tab haptic-feedback" onclick="switchTab(event, 'content')">📝 Контент</button>
-            <button class="tab haptic-feedback" onclick="switchTab(event, 'timing')">⏰ Время</button>
-            <button class="tab haptic-feedback" onclick="switchTab(event, 'posts')">🏆 Топ</button>
-            <button class="tab haptic-feedback" onclick="switchTab(event, 'ai')">🤖 ИИ Анализ</button>
-        </div>
+		<div class="tabs">
+			<button class="tab active haptic-feedback" data-icon="📈" onclick="switchTab(event, 'overview')">
+				<span>📈</span> Обзор
+			</button>
+			<button class="tab haptic-feedback" data-icon="📝" onclick="switchTab(event, 'content')">
+				<span>📝</span> Контент
+			</button>
+			<button class="tab haptic-feedback" data-icon="⏰" onclick="switchTab(event, 'timing')">
+				<span>⏰</span> Время
+			</button>
+			<button class="tab haptic-feedback" data-icon="🏆" onclick="switchTab(event, 'posts')">
+				<span>🏆</span> Топ
+			</button>
+			<button class="tab haptic-feedback" data-icon="🤖" onclick="switchTab(event, 'ai')">
+				<span>🤖</span> ИИ Анализ
+			</button>
+		</div>
 
         <!-- Tab Contents -->
         <div id="overview" class="tab-content active">
