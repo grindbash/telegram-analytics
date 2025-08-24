@@ -1365,18 +1365,6 @@ def generate_pdf():
                     elements.append(Paragraph(section, styles['NormalRU']))
                 
                 elements.append(Spacer(1, 8))
-                line = line.replace('mixed_media_with_text', 'текст + медиа')
-                line = line.replace('text', 'текст')
-                
-                current_paragraph.append(line)
-            
-            if current_paragraph:
-                ai_paragraphs.append(' '.join(current_paragraph))
-            
-            for para in ai_paragraphs:
-                if para.strip():
-                    elements.append(Paragraph(para, styles['NormalRU']))
-                    elements.append(Spacer(1, 8))
         
         # Топ постов - сохраняем смайлы как есть
         if report_data.get('top_posts'):
