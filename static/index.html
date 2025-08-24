@@ -112,7 +112,7 @@
 
         /* Main Content Styles */
         .main-content {
-            
+            display: none; /* Изначально скрыт */
             opacity: 0;
             transition: opacity 0.3s ease;
         }
@@ -1048,6 +1048,10 @@
         // Показать основной контент
         function showMainContent() {
             const mainContent = document.querySelector('.main-content');
+			if (mainContent) {
+				mainContent.style.display = 'block'; // Добавьте эту строку
+				mainContent.classList.add('visible');
+			}
 			// Анимируем вкладку (мигание) с небольшой задержкой для обновления DOM
 			setTimeout(() => {
 				// Находим кнопку вкладки ИИ анализа
@@ -1151,8 +1155,6 @@
                 showError(error.message || 'Произошла ошибка при загрузке данных');
             } finally {
                 hideLoadingModal();
-				// Добавьте эту строку
-				document.querySelector('.main-content').style.display = 'block';
             }
         }
 
@@ -1859,7 +1861,7 @@
             const mainContent = document.querySelector('.main-content');
             if (mainContent) {
                 mainContent.style.display = 'block';
-                mainContent.classList.remove('visible');
+
             }
             
             // Сбрасываем вкладки в состояние загрузки
