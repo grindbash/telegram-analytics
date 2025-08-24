@@ -1250,54 +1250,51 @@ def download_pdf():
 def generate_pdf():
     """Генерация PDF отчета с поддержкой кириллицы и смайлов"""
     try:
-        # Скачиваем и регистрируем шрифты с поддержкой кириллицы
+        # Используем стандартные шрифты с поддержкой Unicode
+        # Попробуем разные шрифты которые могут поддерживать кириллицу
+        available_fonts = ['Helvetica', 'Arial', 'Times-Roman', 'Courier']
+        base_font = 'Helvetica'
+        bold_font = 'Helvetica-Bold'
+        
+        # Проверяем какие шрифты доступны и поддерживают кириллицу
         try:
             from reportlab.pdfbase import pdfmetrics
             from reportlab.pdfbase.ttfonts import TTFont
-            from reportlab.lib.fonts import addMapping
-            import requests
-            import os
             
-            # Создаем папку для шрифтов если нет
-            fonts_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fonts')
-            os.makedirs(fonts_dir, exist_ok=True)
+            # Тестовый текст для проверки шрифтов
+            test_text = "Тест русских букв"
             
-            # Скачиваем кириллический шрифт DejaVu Sans
-            dejavu_path = os.path.join(fonts_dir, 'DejaVuSans.ttf')
-            if not os.path.exists(dejavu_path):
-                logger.info("Скачиваем кириллический шрифт DejaVu Sans...")
-                dejavu_url = "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf"
-                response = requests.get(dejavu_url, timeout=10)
-                with open(dejavu_path, 'wb') as f:
-                    f.write(response.content)
-            
-            # Скачиваем жирный шрифт
-            dejavu_bold_path = os.path.join(fonts_dir, 'DejaVuSans-Bold.ttf')
-            if not os.path.exists(dejavu_bold_path):
-                logger.info("Скачиваем жирный кириллический шрифт...")
-                dejavu_bold_url = "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans-Bold.ttf"
-                response = requests.get(dejavu_bold_url, timeout=10)
-                with open(dejavu_bold_path, 'wb') as f:
-                    f.write(response.content)
-            
-            # Регистрируем шрифты
-            pdfmetrics.registerFont(TTFont('DejaVuSans', dejavu_path))
-            pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', dejavu_bold_path))
-            
-            # Настраиваем маппинг
-            addMapping('DejaVuSans', 0, 0, 'DejaVuSans')
-            addMapping('DejaVuSans', 1, 0, 'DejaVuSans-Bold')
-            
-            base_font = 'DejaVuSans'
-            bold_font = 'DejaVuSans-Bold'
-            logger.info("Кириллические шрифты успешно зарегистрированы")
-            
+            for font_candidate in available_fonts:
+                try:
+                    # Пробуем создать простой PDF с этим шрифтом
+                    test_buffer = BytesIO()
+                    test_doc = SimpleDocTemplate(test_buffer, pagesize=letter)
+                    test_styles = getSampleStyleSheet()
+                    
+                    # Создаем тестовый стиль
+                    test_style = test_styles['Normal'].clone('test')
+                    test_style.fontName = font_candidate
+                    
+                    # Пробуем сгенерировать параграф
+                    from reportlab.platypus import Paragraph
+                    test_elements = [Paragraph(test_text, test_style)]
+                    test_doc.build(test_elements)
+                    
+                    # Если успешно - используем этот шрифт
+                    base_font = font_candidate
+                    bold_font = f"{font_candidate}-Bold" if font_candidate != 'Helvetica' else 'Helvetica-Bold'
+                    logger.info(f"Используем шрифт: {font_candidate}")
+                    break
+                    
+                except Exception as font_test_error:
+                    logger.debug(f"Шрифт {font_candidate} не подошел: {font_test_error}")
+                    continue
+                    
         except Exception as e:
-            logger.error(f"Ошибка загрузки шрифтов: {str(e)}")
-            # Fallback на стандартные шрифты
+            logger.warning(f"Не удалось определить оптимальный шрифт: {str(e)}")
+            # Используем Helvetica по умолчанию
             base_font = 'Helvetica'
             bold_font = 'Helvetica-Bold'
-            logger.info("Используются стандартные шрифты Helvetica")
 
         data = request.get_json()
         report_data = data.get('report')
@@ -1323,7 +1320,15 @@ def generate_pdf():
         # Стили для текста
         styles = getSampleStyleSheet()
         
-        # Основные стили с кириллическими шрифтами
+        # Переопределяем стандартные стили для поддержки кириллицы
+        styles['Normal'].fontName = base_font
+        styles['BodyText'].fontName = base_font
+        styles['Italic'].fontName = base_font
+        styles['Heading1'].fontName = bold_font
+        styles['Heading2'].fontName = bold_font
+        styles['Heading3'].fontName = bold_font
+        
+        # Основные стили
         styles.add(ParagraphStyle(
             name='NormalRU',
             fontName=base_font,
@@ -1499,7 +1504,7 @@ def generate_pdf():
         
         if is_direct_download:
             response = make_response(pdf_data)
-            response.headers['Content-Type'] = 'application/pdf'
+            response.headers['Content-Type': 'application/pdf']
             response.headers['Content-Disposition'] = f'attachment; filename="{get_safe_filename(filename)}"'
             return response
         else:
