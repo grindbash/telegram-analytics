@@ -26,6 +26,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from io import BytesIO
 import base64
 import time
+import re
 import hashlib
 from flask import make_response
 from urllib.parse import quote

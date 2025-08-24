@@ -310,19 +310,22 @@
 				transform: scale(1.05);
 			}
 		}
+		
+		/* Мигание вкладки для привлечения внимания */
+		.tab.blinking {
+			animation: blink 2s infinite;
+		}
 
-        @media (max-width: 768px) {
-            .tab-content.highlight {
-                animation: highlight-mobile 1.5s ease;
-            }
-            
-            @keyframes highlight-mobile {
-                0% { background-color: transparent; }
-                30% { background-color: rgba(59, 130, 246, 0.1); }
-                60% { background-color: transparent; }
-                100% { background-color: transparent; }
-            }
-        }
+		@keyframes blink {
+			0%, 100% { 
+				background-color: transparent;
+				color: var(--tg-theme-text-color, #000000);
+			}
+			50% { 
+				background-color: var(--tg-theme-button-color, #3390ec);
+				color: var(--tg-theme-button-text-color, white);
+			}
+		}
         
         .card {
             background: var(--tg-theme-secondary-bg-color, #ffffff);
@@ -969,6 +972,8 @@
         let currentData = null;
         let currentAIData = null;
         let currentChannel = null;
+		let isAILoading = false;
+		let aiTabNeedsAttention = false;
         const API_BASE_URL = 'https://telegram-analytics-t6pf.onrender.com';
 
         // Функция для перевода типов контента
@@ -1421,67 +1426,75 @@
             }).join('');
         }
 
-        function updateAITab(data) {
-            const tab = document.getElementById('ai');
-            if (!tab) return;
-            
-            if (data.emptyData) {
-                tab.innerHTML = '<div class="error">Нет данных для ИИ анализа</div>';
-                return;
-            }
-            
-            // Проверяем период
-            const periodSelect = document.getElementById('period-select');
-            const hoursBack = periodSelect ? parseInt(periodSelect.value) : 24;
-            
-            const hasAIAnalysis = currentAIData !== null && currentAIData !== undefined;
-            const formattedAIData = hasAIAnalysis ? formatAIAnalysis(currentAIData) : '';
-            
-            // Если период меньше 7 дней, показываем сообщение
-            if (hoursBack < 168) {
-                tab.innerHTML = `
-                    <div class="card">
-                        <h3 class="card-title">🤖 ИИ Анализ канала</h3>
-                        <div class="ai-content">
-                            ИИ анализ доступен только для периодов 7 и 30 дней.
-                        </div>
-                    </div>
-                `;
-                return;
-            }
-            
-            tab.innerHTML = `
-                <div class="card">
-                    <h3 class="card-title">🤖 ИИ Анализ канала</h3>
-                    
-                    <div id="ai-content" class="ai-content">
-                        ${hasAIAnalysis ? formattedAIData : 'ИИ анализ еще не выполнен. Нажмите кнопку "Запросить анализ" для получения детальных рекомендаций. Анализ может занять до 2 минут!'}
-                    </div>
-                    
-                    <div class="ai-actions">
-                        <button id="request-ai" class="ai-button haptic-feedback" ${hasAIAnalysis ? 'style="display: none;"' : ''}>
-                            <svg viewBox="0 0 24 24">
-                                <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v2h8z"/>
-                            </svg>
-                            Запросить ИИ анализ
-                        </button>
-                        
-                        <button id="regenerate-ai" class="ai-button haptic-feedback" ${!hasAIAnalysis ? 'style="display: none;"' : ''}>
-                            <svg viewBox="0 0 24 24">
-                                <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
-                            </svg>
-                            Обновить анализ
-                        </button>
-                    </div>
-                </div>
-            `;
-            
-            const requestBtn = document.getElementById('request-ai');
-            if (requestBtn) requestBtn.addEventListener('click', requestAIAnalysis);
-            
-            const regenerateBtn = document.getElementById('regenerate-ai');
-            if (regenerateBtn) regenerateBtn.addEventListener('click', requestAIAnalysis);
-        }
+		function updateAITab(data) {
+			const tab = document.getElementById('ai');
+			if (!tab) return;
+			
+			if (data.emptyData) {
+				tab.innerHTML = '<div class="error">Нет данных для ИИ анализа</div>';
+				return;
+			}
+			
+			const periodSelect = document.getElementById('period-select');
+			const hoursBack = periodSelect ? parseInt(periodSelect.value) : 24;
+			
+			if (hoursBack < 168) {
+				tab.innerHTML = `
+					<div class="card">
+						<h3 class="card-title">🤖 ИИ Анализ канала</h3>
+						<div class="ai-content">
+							ИИ анализ доступен только для периодов 7 и 30 дней.
+						</div>
+					</div>
+				`;
+				return;
+			}
+			
+			if (isAILoading) {
+				tab.innerHTML = `
+					<div class="ai-loader">
+						<img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcDl1eGJ0Z2F6dW1yZzR0dWZzZ3R5Z2Z6eGZ6eGZ6eGZ6eGZ6eGZ6eCZlcD12MV9pbnRlcm5aLF9naWZfYnl_aWQmY3Q9Zw/3o7bu3XilJ5BOiSGic/giphy.gif" alt="AI Thinking">
+						<p>ИИ анализирует данные...</p>
+					</div>
+				`;
+				return;
+			}
+			
+			const hasAIAnalysis = currentAIData !== null && currentAIData !== undefined;
+			const formattedAIData = hasAIAnalysis ? formatAIAnalysis(currentAIData) : '';
+			
+			tab.innerHTML = `
+				<div class="card">
+					<h3 class="card-title">🤖 ИИ Анализ канала</h3>
+					
+					<div id="ai-content" class="ai-content">
+						${hasAIAnalysis ? formattedAIData : 'ИИ анализ еще не выполнен. Нажмите кнопку "Запросить анализ" для получения детальных рекомендаций. Анализ может занять до 2 минут!'}
+					</div>
+					
+					<div class="ai-actions">
+						<button id="request-ai" class="ai-button haptic-feedback" ${hasAIAnalysis ? 'style="display: none;"' : ''}>
+							<svg viewBox="0 0 24 24">
+								<path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v2h8z"/>
+							</svg>
+							Запросить ИИ анализ
+						</button>
+						
+						<button id="regenerate-ai" class="ai-button haptic-feedback" ${!hasAIAnalysis ? 'style="display: none;"' : ''}>
+							<svg viewBox="0 0 24 24">
+								<path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+							</svg>
+							Обновить анализ
+						</button>
+					</div>
+				</div>
+			`;
+			
+			const requestBtn = document.getElementById('request-ai');
+			if (requestBtn) requestBtn.addEventListener('click', requestAIAnalysis);
+			
+			const regenerateBtn = document.getElementById('regenerate-ai');
+			if (regenerateBtn) regenerateBtn.addEventListener('click', requestAIAnalysis);
+		}
 
         // Инициализация графиков
         function initContentChart(labels, data) {
@@ -1592,132 +1605,161 @@
                 .replace(/\n/g, '<br>');
         }
 
-        function switchTab(event, tabName) {
-            if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-            
-            document.querySelectorAll('.tab-content, .tab').forEach(el => {
-                el.classList.remove('active');
-            });
-            
-            const tabElement = document.getElementById(tabName);
-            if (tabElement) tabElement.classList.add('active');
-            
-            event.target.classList.add('active');
-            
-            // Перерисовываем графики при переключении
-            if (currentData) {
-                if (tabName === 'content') {
-                    updateContentTab(currentData);
-                } else if (tabName === 'timing') {
-                    updateTimingTab(currentData);
-                } else if (tabName === 'ai') {
-                    updateAITab(currentData);
-                }
-            }
-        }
+		function switchTab(event, tabName) {
+			if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+			
+			document.querySelectorAll('.tab-content, .tab').forEach(el => {
+				el.classList.remove('active');
+			});
+			
+			const tabElement = document.getElementById(tabName);
+			if (tabElement) tabElement.classList.add('active');
+			
+			event.target.classList.add('active');
+			
+			// Останавливаем мигание при переходе на вкладку ИИ
+			if (tabName === 'ai') {
+				stopBlinkingAiTab();
+			}
+			
+			if (currentData) {
+				if (tabName === 'content') {
+					updateContentTab(currentData);
+				} else if (tabName === 'timing') {
+					updateTimingTab(currentData);
+				} else if (tabName === 'ai') {
+					updateAITab(currentData);
+				}
+			}
+		}
+		
+		function startBlinkingAiTab() {
+			if (!aiTabNeedsAttention) return;
+			
+			const aiTabButton = document.querySelector('.tab[data-icon="🤖"]');
+			if (!aiTabButton) return;
+			
+			aiTabButton.classList.add('blinking');
+			
+			// Останавливаем мигание через 10 секунд, если пользователь не перешел
+			setTimeout(() => {
+				stopBlinkingAiTab();
+			}, 10000);
+		}
 
+		function stopBlinkingAiTab() {
+			aiTabNeedsAttention = false;
+			const aiTabButton = document.querySelector('.tab[data-icon="🤖"]');
+			if (aiTabButton) {
+				aiTabButton.classList.remove('blinking');
+			}
+		}
         // Запрос ИИ анализа
-        async function requestAIAnalysis() {
-            try {
-                if (!currentData) {
-                    throw new Error('Нет данных для анализа');
-                }
-                // Проверяем выбранный период
-                const periodSelect = document.getElementById('period-select');
-                const hoursBack = periodSelect ? parseInt(periodSelect.value) : 24;
-                
-                if (hoursBack < 168) { // Меньше 7 дней (168 часов)
-                    if (tg?.showAlert) {
-                        tg.showAlert("ИИ анализ доступен только для периодов 7 и 30 дней");
-                    } else {
-                        alert("ИИ анализ доступен только для периодов 7 и 30 дней");
-                    }
-                    return;
-                }
-                const aiTab = document.getElementById('ai');
-                if (!aiTab) return;
-                
-                aiTab.innerHTML = `
-                    <div class="ai-loader">
-                        <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcDl1eGJ0Z2F6dW1yZzR0dWZzZ3R5Z2Z6eGZ6eGZ6eGZ6eGZ6eGZ6eCZlcD12MV9pbnRlcm5aLF9naWZfYnl_aWQmY3Q9Zw/3o7bu3XilJ5BOiSGic/giphy.gif" alt="AI Thinking">
-                        <p>ИИ анализирует данные...</p>
-                    </div>
-                `;
-                
-                const response = await fetch(`${API_BASE_URL}/ai_analyze`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        report: currentData
-                    })
-                });
-                
-                // Проверяем статус ответа
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(errorText || `Ошибка сервера: ${response.status}`);
-                }
-                
-                const result = await response.json();
-                
-                if (response.ok) {
-                    currentAIData = result.ai_report || "ИИ анализ не дал результатов";
-                    
-                    // Добавляем информацию о кэшировании, если есть
-                    if (result.cached) {
-                        currentAIData = "♻️ Этот анализ был загружен из кэша (создан менее часа назад)\n\n" + currentAIData;
-                    }
-                    // Обновляем вкладку ИИ
-                    updateAITab(currentData);
-                    
-                    // Анимируем вкладку (мигание) с небольшой задержкой для обновления DOM
-                    setTimeout(() => {
-                        const aiTab = document.getElementById('ai');
-                        if (aiTab) {
-                            aiTab.classList.add('highlight');
-                            setTimeout(() => {
-                                aiTab.classList.remove('highlight');
-                            }, 2000);
-                        }
-                    }, 100);
-                    
-                    // Применяем форматирование к ИИ-анализу
-                    const formattedAIData = formatAIAnalysis(currentAIData);
-                    
-                    // Обновляем вкладку с отформатированным контентом
-                    updateAITab(currentData);
-                    
-                    // Убеждаемся, что контент правильно отображается
-                    setTimeout(() => {
-                        const aiContent = document.getElementById('ai-content');
-                        if (aiContent) {
-                            aiContent.innerHTML = formattedAIData;
-                        }
-                    }, 100);
-                    
-                } else {
-                    throw new Error(result.error || 'Ошибка ИИ анализа');
-                }
-            } catch (error) {
-                console.error('Ошибка ИИ анализа:', error);
-                const aiTab = document.getElementById('ai');
-                if (aiTab) {
-                    aiTab.innerHTML = `
-                        <div class="error">
-                            <p>${error.message}</p>
-                            <button onclick="requestAIAnalysis()" class="tg-button" style="margin-top: 10px;">
-                                Попробовать снова
-                            </button>
-                        </div>
-                    `;
-                }
-            } finally {
-                hideLoadingModal();
-            }
-        }
+		async function requestAIAnalysis() {
+			try {
+				if (!currentData) {
+					throw new Error('Нет данных для анализа');
+				}
+				
+				// Проверяем выбранный период
+				const periodSelect = document.getElementById('period-select');
+				const hoursBack = periodSelect ? parseInt(periodSelect.value) : 24;
+				
+				if (hoursBack < 168) { // Меньше 7 дней (168 часов)
+					if (tg?.showAlert) {
+						tg.showAlert("ИИ анализ доступен только для периодов 7 и 30 дней");
+					} else {
+						alert("ИИ анализ доступен только для периодов 7 и 30 дней");
+					}
+					return;
+				}
+				
+				// Устанавливаем состояние загрузки
+				isAILoading = true;
+				updateAITab(currentData);
+				
+				const response = await fetch(`${API_BASE_URL}/ai_analyze`, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						'Accept': 'application/json'
+					},
+					body: JSON.stringify({
+						report: currentData
+					})
+				});
+				
+				// Проверяем статус ответа
+				if (!response.ok) {
+					const errorText = await response.text();
+					throw new Error(errorText || `Ошибка сервера: ${response.status}`);
+				}
+				
+				const result = await response.json();
+				
+				if (response.ok) {
+					currentAIData = result.ai_report || "ИИ анализ не дал результатов";
+					
+					// Добавляем информацию о кэшировании, если есть
+					if (result.cached) {
+						currentAIData = "♻️ Этот анализ был загружен из кэша (создан менее часа назад)\n\n" + currentAIData;
+					}
+					
+					// Проверяем, активна ли вкладка ИИ
+					const aiTab = document.getElementById('ai');
+					const isAiTabActive = aiTab.classList.contains('active');
+					
+					if (isAiTabActive) {
+						// Если вкладка активна, просто обновляем содержимое
+						updateAITab(currentData);
+						
+						// Анимируем вкладку
+						setTimeout(() => {
+							if (aiTab) {
+								aiTab.classList.add('highlight');
+								setTimeout(() => {
+									aiTab.classList.remove('highlight');
+								}, 2000);
+							}
+						}, 100);
+					} else {
+						// Если вкладка не активна, устанавливаем флаг для мигания
+						aiTabNeedsAttention = true;
+						startBlinkingAiTab();
+					}
+					
+					// Применяем форматирование к ИИ-анализу
+					const formattedAIData = formatAIAnalysis(currentAIData);
+					
+					// Убеждаемся, что контент правильно отображается
+					setTimeout(() => {
+						const aiContent = document.getElementById('ai-content');
+						if (aiContent) {
+							aiContent.innerHTML = formattedAIData;
+						}
+					}, 100);
+					
+				} else {
+					throw new Error(result.error || 'Ошибка ИИ анализа');
+				}
+			} catch (error) {
+				console.error('Ошибка ИИ анализа:', error);
+				const aiTab = document.getElementById('ai');
+				if (aiTab) {
+					aiTab.innerHTML = `
+						<div class="error">
+							<p>${error.message}</p>
+							<button onclick="requestAIAnalysis()" class="tg-button" style="margin-top: 10px;">
+								Попробовать снова
+							</button>
+						</div>
+					`;
+				}
+			} finally {
+				isAILoading = false;
+				hideLoadingModal();
+			}
+		}
 
         // Генерация PDF
         async function generatePDF() {
