@@ -171,7 +171,20 @@ class TelegramAnalytics:
         self.client = None
         self.moscow_tz = pytz.timezone('Europe/Moscow')
         self._loop = None
-        
+
+    def get_period_text(self, hours):
+        """Получение текстового описания периода"""
+        if hours == 24:
+            return "24 часа"
+        elif hours == 72:
+            return "3 дня"
+        elif hours == 168:
+            return "7 дней"
+        elif hours == 720:
+            return "30 дней"
+        else:
+            return f"{hours} часов"
+
     def _format_content_type(self, content_type):
         """Форматирование названий типов контента"""
         type_mapping = {
@@ -295,8 +308,10 @@ class TelegramAnalytics:
     async def generate_ai_analysis(self, report_data):
         """Генерация ИИ анализа через OpenRouter"""
         try:
+            hours_back = report_data['analysis_period']['hours_back']
+            period_text = self.get_period_text(hours_back)  # Нужно добавить эту функцию            
             prompt = f"""
-            Ты эксперт по анализу Telegram каналов с опытом в data-driven маркетинге. Проанализируй предоставленные данные и дай развернутые рекомендации.
+            Ты эксперт по анализу Telegram каналов с опытом в data-driven маркетинге. Проанализируй предоставленные данные за период: {period_text} и дай развернутые рекомендации.
                 Ты не описываешь процесс мышления.
                 Ты сразу выдаёшь готовый, структурированный отчёт на основе данных.
                 Не используй фразы вроде 'начну с', 'теперь проверю', 'я думаю'.
@@ -897,113 +912,6 @@ class TelegramAnalytics:
 # Создаем экземпляр аналитики
 analytics = TelegramAnalytics()
 
-# Функция для создания базового HTML файла если его нет
-# def create_basic_html():
-    # """Создаем базовый HTML файл для фронтенда"""
-    # html_content = """<!DOCTYPE html>
-# <html lang="ru">
-# <head>
-    # <meta charset="UTF-8">
-    # <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    # <title>Telegram Analytics</title>
-    # <style>
-        # body { font-family: Arial, sans-serif; margin: 40px; }
-        # .container { max-width: 800px; margin: 0 auto; }
-        # .form-group { margin-bottom: 20px; }
-        # label { display: block; margin-bottom: 5px; font-weight: bold; }
-        # input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
-        # button { background-color: #007bff; color: white; padding: 12px 20px; border: none; border-radius: 4px; cursor: pointer; }
-        # button:hover { background-color: #0056b3; }
-        # .result { margin-top: 20px; padding: 20px; background-color: #f8f9fa; border-radius: 4px; }
-        # .error { background-color: #f8d7da; color: #721c24; }
-        # .loading { text-align: center; color: #6c757d; }
-    # </style>
-# </head>
-# <body>
-    # <div class="container">
-        # <h1>Telegram Channel Analytics</h1>
-        # <form id="analyticsForm">
-            # <div class="form-group">
-                # <label for="channel">Канал (username или ID):</label>
-                # <input type="text" id="channel" placeholder="@channelname или -1001234567890" required>
-            # </div>
-            # <div class="form-group">
-                # <label for="hours">Период анализа (часов):</label>
-                # <select id="hours">
-                    # <option value="24">24 часа</option>
-                    # <option value="72">3 дня</option>
-                    # <option value="168">7 дней</option>
-                    # <option value="720">30 дней</option>
-                # </select>
-            # </div>
-            # <button type="submit">Анализировать</button>
-        # </form>
-        # <div id="result" class="result" style="display: none;"></div>
-    # </div>
-    
-    # <script>
-        # document.getElementById('analyticsForm').addEventListener('submit', async (e) => {
-            # e.preventDefault();
-            
-            # const channel = document.getElementById('channel').value;
-            # const hours = parseInt(document.getElementById('hours').value);
-            # const resultDiv = document.getElementById('result');
-            
-            # resultDiv.style.display = 'block';
-            # resultDiv.className = 'result loading';
-            # resultDiv.innerHTML = 'Анализ в процессе...';
-            
-            # try {
-                # const response = await fetch('/analyze', {
-                    # method: 'POST',
-                    # headers: {
-                        # 'Content-Type': 'application/json',
-                    # },
-                    # body: JSON.stringify({
-                        # channel_username: channel,
-                        # hours_back: hours
-                    # })
-                # });
-                
-                # const data = await response.json();
-                
-                # if (data.error) {
-                    # resultDiv.className = 'result error';
-                    # resultDiv.innerHTML = `Ошибка: ${data.error}`;
-                # } else {
-                    # resultDiv.className = 'result';
-                    # resultDiv.innerHTML = formatResult(data);
-                # }
-            # } catch (error) {
-                # resultDiv.className = 'result error';
-                # resultDiv.innerHTML = `Ошибка: ${error.message}`;
-            # }
-        # });
-        
-        # function formatResult(data) {
-            # return `
-                # <h2>${data.channel_info.title}</h2>
-                # <p><strong>Подписчиков:</strong> ${data.channel_info.subscribers}</p>
-                # <p><strong>Период:</strong> ${data.analysis_period.hours_back} часов</p>
-                # <p><strong>Всего постов:</strong> ${data.summary.total_posts}</p>
-                # <p><strong>Всего просмотров:</strong> ${data.summary.total_views}</p>
-                # <p><strong>Средний охват:</strong> ${data.summary.avg_views_per_post}</p>
-                # <p><strong>Engagement Rate:</strong> ${data.summary.engagement_rate.er_views}%</p>
-                
-                # <h3>Рекомендации:</h3>
-                # <ul>
-                    # ${data.recommendations.map(rec => `<li>${rec}</li>`).join('')}
-                # </ul>
-            # `;
-        # }
-    # </script>
-# </body>
-# </html>"""
-    
-    # os.makedirs('static', exist_ok=True)
-    # with open('static/index.html', 'w', encoding='utf-8') as f:
-        # f.write(html_content)
-
 # Flask маршруты
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -1071,17 +979,21 @@ def ai_analyze():
         if not report_data:
             return jsonify({'error': 'No report data provided'}), 400
         
+        # Получаем период анализа из отчета
+        hours_back = report_data['analysis_period']['hours_back']
+        
         # Детальное логирование полученных данных
         logger.info(f"Получен запрос на ИИ анализ для канала: {report_data['channel_info']['title']}")
+        logger.info(f"Период анализа: {hours_back} часов")
         logger.debug(f"ID канала: {report_data['channel_info']['id']}")
         
         channel_id = report_data['channel_info']['id']
         
-        # Проверяем кэш в Supabase
+        # Проверяем кэш в Supabase с учетом периода анализа
         try:
-            logger.info(f"Проверка кэша в Supabase для channel_id: {channel_id}")
+            logger.info(f"Проверка кэша в Supabase для channel_id: {channel_id}, период: {hours_back} часов")
             response = requests.get(
-                f"{SUPABASE_URL}/rest/v1/ai_reports?channel_id=eq.{channel_id}&order=created_at.desc&limit=1",
+                f"{SUPABASE_URL}/rest/v1/ai_reports?channel_id=eq.{channel_id}&hours_back=eq.{hours_back}&order=created_at.desc&limit=1",
                 headers=SUPABASE_HEADERS,
                 timeout=5
             )
@@ -1120,7 +1032,7 @@ def ai_analyze():
         ai_report = loop.run_until_complete(analytics.generate_ai_analysis(report_data))
         logger.info("ИИ анализ завершен")
         
-        # Сохраняем в Supabase
+        # Сохраняем в Supabase с указанием периода анализа
         try:
             logger.info("Сохранение результата в Supabase...")
             response = requests.post(
@@ -1128,7 +1040,8 @@ def ai_analyze():
                 headers=SUPABASE_HEADERS,
                 json={
                     'channel_id': channel_id,
-                    'report_data': ai_report
+                    'report_data': ai_report,
+                    'hours_back': hours_back  # Добавляем период анализа
                 },
                 timeout=10
             )
@@ -1423,8 +1336,20 @@ def generate_pdf():
                     continue
                 
                 # Заменяем только маркдаун-разметку, смайлы оставляем
-                line = line.replace('###', '').replace('####', '')
-                line = line.replace('**', '').replace('*', '')
+                # Заголовки
+                if line.startswith('**'):
+                    elements.append(Paragraph(line.replace('**', ''), styles['SubheaderRU']))
+                # Подзаголовки
+                elif line.startswith('###'):
+                    elements.append(Paragraph(line.replace('###', ''), styles['SubheaderRU']))
+                # Списки
+                elif line.startswith('- '):
+                    elements.append(Paragraph(f"• {line[2:]}", styles['NormalRU']))
+                # Обычный текст
+                else:
+                    elements.append(Paragraph(line, styles['NormalRU']))
+                
+                elements.append(Spacer(1, 6))
                 line = line.replace('mixed_media_with_text', 'текст + медиа')
                 line = line.replace('text', 'текст')
                 
