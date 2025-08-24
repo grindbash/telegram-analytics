@@ -1306,13 +1306,13 @@ def generate_pdf():
         ))
 
         styles.add(ParagraphStyle(
-            name='SmallRU',
-            fontName=base_font,
-            fontSize=8,
-            textColor=colors.HexColor('#666666'),
-            spaceAfter=4,
-            leading=10
-        ))
+        name='SmallRU',
+        fontName=base_font,
+        fontSize=8,
+        textColor=colors.HexColor('#666666'),
+        spaceAfter=4,
+        leading=10
+    ))
 
         elements = []
         
@@ -1425,9 +1425,9 @@ def generate_pdf():
                 # Используем простой список вместо таблицы
                 post_info = f"{i}. {post.get('date', '')} - {post.get('views', 0)} просмотров"
                 elements.append(Paragraph(post_info, styles['NormalRU']))
-                elements.append(Paragraph(f"   Тип: {content_type}", styles['Small']))
+                elements.append(Paragraph(f"   Тип: {content_type}", styles['SmallRU']))
                 if preview:
-                    elements.append(Paragraph(f"   {preview}", styles['Small']))
+                    elements.append(Paragraph(f"   {preview}", styles['SmallRU']))
                 elements.append(Spacer(1, 10))
         
         # Создаем PDF
