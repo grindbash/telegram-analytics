@@ -1368,6 +1368,7 @@ def generate_pdf():
             ai_report = ai_report.replace('photo', 'фото')
             ai_report = ai_report.replace('video', 'видео')
             ai_report = ai_report.replace('media', 'медиа')
+            ai_report = ai_report.replace('**', '')  # ← Добавьте эту строку для удаления всех **
 
             # Разделяем отчет на секции по двойным переносам
             sections = ai_report.split('\n\n')
