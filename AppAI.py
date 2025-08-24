@@ -1246,64 +1246,11 @@ def download_pdf():
 def generate_pdf():
     """Генерация PDF отчета с поддержкой кириллицы и смайлов"""
     try:
-        # Регистрация шрифтов с поддержкой emoji
-        try:
-            from reportlab.pdfbase import pdfmetrics
-            from reportlab.pdfbase.ttfonts import TTFont
-            from reportlab.lib.fonts import addMapping
-            import requests
-            import os
-            
-            # Создаем папку для шрифтов если нет
-            fonts_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fonts')
-            os.makedirs(fonts_dir, exist_ok=True)
-            
-            # Путь к шрифту с emoji поддержкой
-            emoji_font_path = os.path.join(fonts_dir, 'NotoColorEmoji.ttf')
-            
-            # Скачиваем шрифт если его нет
-            if not os.path.exists(emoji_font_path):
-                logger.info("Скачиваем шрифт с поддержкой emoji...")
-                try:
-                    emoji_font_url = "https://github.com/googlefonts/noto-emoji/raw/main/fonts/NotoColorEmoji.ttf"
-                    response = requests.get(emoji_font_url, timeout=10)
-                    with open(emoji_font_path, 'wb') as f:
-                        f.write(response.content)
-                    logger.info("Шрифт с emoji скачан")
-                except Exception as download_error:
-                    logger.warning(f"Не удалось скачать шрифт emoji: {download_error}")
-            
-            # Регистрируем шрифты
-            if os.path.exists(emoji_font_path):
-                pdfmetrics.registerFont(TTFont('NotoEmoji', emoji_font_path))
-                logger.info("Шрифт с emoji зарегистрирован")
-            
-            # Регистрируем стандартные шрифты
-            try:
-                dejavu_path = os.path.join(fonts_dir, 'DejaVuSans.ttf')
-                if not os.path.exists(dejavu_path):
-                    dejavu_url = "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf"
-                    response = requests.get(dejavu_url, timeout=10)
-                    with open(dejavu_path, 'wb') as f:
-                        f.write(response.content)
-                
-                pdfmetrics.registerFont(TTFont('DejaVuSans', dejavu_path))
-                pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', os.path.join(fonts_dir, 'DejaVuSans-Bold.ttf')))
-                
-                # Устанавливаем mapping для поддержки кириллицы
-                addMapping('DejaVuSans', 0, 0, 'DejaVuSans')
-                addMapping('DejaVuSans', 1, 0, 'DejaVuSans-Bold')
-                
-                base_font = 'DejaVuSans'
-                logger.info("Кириллические шрифты зарегистрированы")
-                
-            except Exception as dejavu_error:
-                logger.warning(f"Не удалось загрузить DejaVu шрифты: {dejavu_error}")
-                base_font = 'Helvetica'
-                
-        except Exception as e:
-            logger.error(f"Ошибка шрифта: {str(e)}")
-            base_font = 'Helvetica'
+        # Используем стандартные шрифты ReportLab которые поддерживают Unicode
+        base_font = 'Helvetica'
+        bold_font = 'Helvetica-Bold'
+        
+        logger.info("Используются стандартные шрифты Helvetica с поддержкой Unicode")
 
         data = request.get_json()
         report_data = data.get('report')
@@ -1315,7 +1262,7 @@ def generate_pdf():
         # Создаем буфер для PDF
         buffer = BytesIO()
         
-        # Инициализация документа с увеличенными полями
+        # Инициализация документа с UTF-8 кодировкой
         doc = SimpleDocTemplate(
             buffer,
             pagesize=letter,
@@ -1323,7 +1270,7 @@ def generate_pdf():
             leftMargin=30,
             topMargin=30,
             bottomMargin=30,
-            encoding='utf-8'  # Добавляем кодировку UTF-8
+            encoding='utf-8'
         )
         
         # Стили для текста
@@ -1340,7 +1287,7 @@ def generate_pdf():
         
         styles.add(ParagraphStyle(
             name='HeaderRU',
-            fontName='DejaVuSans-Bold',
+            fontName=bold_font,
             fontSize=14,
             textColor=colors.HexColor('#3B82F6'),
             spaceAfter=12
@@ -1348,24 +1295,15 @@ def generate_pdf():
         
         styles.add(ParagraphStyle(
             name='SubheaderRU', 
-            fontName='DejaVuSans-Bold',
+            fontName=bold_font,
             fontSize=12,
             textColor=colors.HexColor('#2563EB'),
             spaceAfter=8
         ))
 
-        # Стиль для текста со смайлами
-        styles.add(ParagraphStyle(
-            name='EmojiText',
-            fontName=base_font,
-            fontSize=10,
-            leading=12,
-            spaceAfter=6
-        ))
-
         elements = []
         
-        # Заголовок (со смайлами)
+        # Заголовок - сохраняем смайлы как есть
         title = report_data['channel_info']['title']
         elements.append(Paragraph(
             f"Аналитический отчет: {title}",
@@ -1379,7 +1317,7 @@ def generate_pdf():
         ))
         elements.append(Spacer(1, 20))
         
-        # Основные метрики - УВЕЛИЧИВАЕМ таблицу
+        # Основные метрики
         metrics = [
             ['Метрика', 'Значение'],
             ['Подписчиков', str(report_data['channel_info']['subscribers'])],
@@ -1390,12 +1328,12 @@ def generate_pdf():
             ['ER (подписчики)', f"{report_data['summary']['engagement_rate']['er_subscribers']}%"]
         ]
         
-        metrics_table = Table(metrics, colWidths=[250, 100])
+        metrics_table = Table(metrics, colWidths=[200, 100])
         metrics_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F3F4F6')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#1F2937')),
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('FONTNAME', (0, 0), (-1, 0), 'DejaVuSans-Bold'),
+            ('FONTNAME', (0, 0), (-1, 0), bold_font),
             ('FONTSIZE', (0, 0), (-1, 0), 10),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
             ('BACKGROUND', (0, 1), (-1, -1), colors.white),
@@ -1408,24 +1346,24 @@ def generate_pdf():
         elements.append(metrics_table)
         elements.append(Spacer(1, 30))
         
-        # Рекомендации с поддержкой смайлов
+        # Рекомендации - сохраняем смайлы как есть
         elements.append(Paragraph("Рекомендации", styles['HeaderRU']))
         for rec in report_data.get('recommendations', []):
-            # Заменяем названия типов контента но сохраняем смайлы
+            # Только заменяем названия типов контента, смайлы оставляем
             rec = rec.replace('mixed_media_with_text', 'текст + медиа')
             rec = rec.replace('text', 'текст')
             rec = rec.replace('photo', 'фото')
             rec = rec.replace('video', 'видео')
             rec = rec.replace('media', 'медиа')
             
-            elements.append(Paragraph(f"• {rec}", styles['EmojiText']))
+            elements.append(Paragraph(f"• {rec}", styles['NormalRU']))
         elements.append(Spacer(1, 20))
         
-        # Анализ ИИ с поддержкой смайлов
+        # Анализ ИИ - сохраняем смайлы как есть
         if ai_report:
             elements.append(Paragraph("ИИ Анализ", styles['HeaderRU']))
             
-            # Обрабатываем ИИ анализ с сохранением смайлов
+            # Обрабатываем ИИ анализ сохраняя смайлы
             ai_paragraphs = []
             current_paragraph = []
             
@@ -1437,11 +1375,9 @@ def generate_pdf():
                         current_paragraph = []
                     continue
                 
-                # Заменяем маркдаун-разметку но сохраняем смайлы
+                # Заменяем только маркдаун-разметку, смайлы оставляем
                 line = line.replace('###', '').replace('####', '')
                 line = line.replace('**', '').replace('*', '')
-                
-                # Заменяем названия типов контента
                 line = line.replace('mixed_media_with_text', 'текст + медиа')
                 line = line.replace('text', 'текст')
                 
@@ -1452,17 +1388,16 @@ def generate_pdf():
             
             for para in ai_paragraphs:
                 if para.strip():
-                    elements.append(Paragraph(para, styles['EmojiText']))
+                    elements.append(Paragraph(para, styles['NormalRU']))
                     elements.append(Spacer(1, 8))
         
-        # Топ постов с поддержкой смайлов
+        # Топ постов - сохраняем смайлы как есть
         if report_data.get('top_posts'):
             elements.append(Paragraph("Топ постов", styles['HeaderRU']))
             elements.append(Spacer(1, 10))
             
-            top_posts_data = [['Дата', 'Просмотры', 'Тип', 'Превью']]
-            
-            for post in report_data['top_posts'][:5]:
+            # Упрощенный формат списка вместо таблицы
+            for i, post in enumerate(report_data['top_posts'][:3], 1):
                 content_type = post.get('content_type', '')
                 content_type = content_type.replace('mixed_media_with_text', 'текст + медиа')
                 content_type = content_type.replace('text', 'текст')
@@ -1470,38 +1405,17 @@ def generate_pdf():
                 content_type = content_type.replace('video', 'видео')
                 
                 preview = post.get('text_preview', '')
-                if len(preview) > 40:  # Уменьшаем для лучшего отображения
-                    preview = preview[:37] + '...'
+                # Сохраняем смайлы в превью
+                if len(preview) > 60:
+                    preview = preview[:57] + '...'
                 
-                top_posts_data.append([
-                    str(post.get('date', '')),
-                    str(post.get('views', 0)),
-                    str(content_type),
-                    str(preview)
-                ])
-            
-            # Увеличиваем размеры для лучшего отображения
-            top_table = Table(top_posts_data, colWidths=[70, 50, 70, 150])
-            top_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F3F4F6')),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#1F2937')),
-                ('ALIGN', (0, 0), (1, -1), 'CENTER'),
-                ('ALIGN', (2, 0), (-1, -1), 'LEFT'),
-                ('FONTNAME', (0, 0), (-1, 0), 'DejaVuSans-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 8),
-                ('FONTSIZE', (0, 1), (-1, -1), 7),
-                ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-                ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E7EB')),
-                ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB')),
-                ('FONTNAME', (0, 1), (-1, -1), base_font),
-                ('WORDWRAP', (0, 0), (-1, -1), True),
-                ('LEFTPADDING', (0, 0), (-1, -1), 4),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 4)
-            ]))
-            
-            elements.append(top_table)
-            elements.append(Spacer(1, 20))
+                # Используем простой список вместо таблицы
+                post_info = f"{i}. {post.get('date', '')} - {post.get('views', 0)} просмотров"
+                elements.append(Paragraph(post_info, styles['NormalRU']))
+                elements.append(Paragraph(f"   Тип: {content_type}", styles['Small']))
+                if preview:
+                    elements.append(Paragraph(f"   {preview}", styles['Small']))
+                elements.append(Spacer(1, 10))
         
         # Создаем PDF
         doc.build(elements)
