@@ -1261,6 +1261,17 @@ def generate_pdf():
             leading=10
         ))
 
+        # Определяем стили для мобильных устройств
+        user_agent = request.headers.get('User-Agent', '')
+        is_mobile = any(device in user_agent.lower() for device in ['mobile', 'android', 'iphone', 'ipad'])
+
+        if is_mobile:
+            logger.info("Mobile device detected - adjusting font sizes")
+            styles['NormalRU'].fontSize = 9
+            styles['HeaderRU'].fontSize = 12
+            styles['SubheaderRU'].fontSize = 10
+            styles['SmallRU'].fontSize = 7
+
         elements = []
         
         # Заголовок - сохраняем смайлы как есть
@@ -1320,36 +1331,39 @@ def generate_pdf():
         elements.append(Spacer(1, 20))
         
         # Анализ ИИ - сохраняем смайлы как есть
+        # Замените блок обработки AI-отчета на этот:
+
         if ai_report:
             elements.append(Paragraph("ИИ Анализ", styles['HeaderRU']))
-            
-            # Обрабатываем ИИ анализ сохраняя смайлы
-            ai_paragraphs = []
-            current_paragraph = []
-            
-            for line in ai_report.split('\n'):
-                line = line.strip()
-                if not line:
-                    if current_paragraph:
-                        ai_paragraphs.append(' '.join(current_paragraph))
-                        current_paragraph = []
+            elements.append(Spacer(1, 12))
+
+            # Если есть пометка о кэше — добавляем её
+            if "кэша" in ai_report:
+                cache_line = ai_report.split('\n')[0]  # Берём первую строку (кэш)
+                elements.append(Paragraph(cache_line, styles['SmallRU']))
+                elements.append(Spacer(1, 12))
+                # Убираем строку кэша из основного отчёта
+                ai_report = '\n'.join(ai_report.split('\n')[1:])
+
+            # Разделяем отчет на секции по двойным переносам
+            sections = ai_report.split('\n\n')
+
+            for section in sections:
+                section = section.strip()
+                if not section:
                     continue
-                
-                # Заменяем только маркдаун-разметку, смайлы оставляем
-                # Заголовки
-                if line.startswith('**'):
-                    elements.append(Paragraph(line.replace('**', ''), styles['SubheaderRU']))
-                # Подзаголовки
-                elif line.startswith('###'):
-                    elements.append(Paragraph(line.replace('###', ''), styles['SubheaderRU']))
-                # Списки
-                elif line.startswith('- '):
-                    elements.append(Paragraph(f"• {line[2:]}", styles['NormalRU']))
-                # Обычный текст
+
+                # Если секция начинается с цифры (например, "1. Краткое резюме") — это заголовок
+                if re.match(r'^\d+\.', section):
+                    elements.append(Paragraph(section, styles['SubheaderRU']))
+                # Если секция содержит только заголовок без текста — пропускаем лишние переносы
+                elif len(section) < 100 and not section.startswith('-'):
+                    elements.append(Paragraph(section, styles['SubheaderRU']))
                 else:
-                    elements.append(Paragraph(line, styles['NormalRU']))
+                    # Обычный абзац — добавляем как есть
+                    elements.append(Paragraph(section, styles['NormalRU']))
                 
-                elements.append(Spacer(1, 6))
+                elements.append(Spacer(1, 8))
                 line = line.replace('mixed_media_with_text', 'текст + медиа')
                 line = line.replace('text', 'текст')
                 

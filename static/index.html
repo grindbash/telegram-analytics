@@ -273,18 +273,43 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
-        .tab-content.highlight {
-            animation: highlight 2s ease;
-        }
+		/* Анимация для подсветки вкладки ИИ анализа */
+		.tab-content.highlight {
+			animation: highlightTab 2s ease;
+			border: 2px solid var(--tg-theme-button-color, #3390ec);
+			border-radius: 12px;
+		}
 
-        @keyframes highlight {
-            0% { background-color: transparent; }
-            20% { background-color: rgba(59, 130, 246, 0.1); }
-            40% { background-color: transparent; }
-            60% { background-color: rgba(59, 130, 246, 0.1); }
-            80% { background-color: transparent; }
-            100% { background-color: transparent; }
-        }
+		@keyframes highlightTab {
+			0% { 
+				box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+				border-color: var(--tg-theme-button-color, #3390ec);
+			}
+			50% { 
+				box-shadow: 0 0 20px 10px rgba(59, 130, 246, 0.2);
+				border-color: var(--tg-theme-button-color, #3390ec);
+			}
+			100% { 
+				box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+				border-color: transparent;
+			}
+		}
+
+		/* Анимация для кнопки вкладки */
+		.tab.highlight-tab {
+			animation: highlightTabButton 2s ease;
+		}
+
+		@keyframes highlightTabButton {
+			0%, 100% { 
+				background-color: transparent;
+				transform: scale(1);
+			}
+			50% { 
+				background-color: rgba(59, 130, 246, 0.3);
+				transform: scale(1.05);
+			}
+		}
 
         @media (max-width: 768px) {
             .tab-content.highlight {
@@ -1023,9 +1048,33 @@
         // Показать основной контент
         function showMainContent() {
             const mainContent = document.querySelector('.main-content');
-            setTimeout(() => {
-                if (mainContent) mainContent.classList.add('visible');
-            }, 50);
+			// Анимируем вкладку (мигание) с небольшой задержкой для обновления DOM
+			setTimeout(() => {
+				// Находим кнопку вкладки ИИ анализа
+				const aiTabButtons = document.querySelectorAll('.tab');
+				let aiTabButton = null;
+				
+				aiTabButtons.forEach(tab => {
+					if (tab.textContent.includes('ИИ') || tab.textContent.includes('🤖')) {
+						aiTabButton = tab;
+					}
+				});
+				
+				const aiContent = document.getElementById('ai');
+				
+				if (aiTabButton && aiContent) {
+					// Добавляем анимацию к контенту
+					aiContent.classList.add('highlight');
+					
+					// Добавляем анимацию к кнопке вкладки
+					aiTabButton.classList.add('highlight-tab');
+					
+					setTimeout(() => {
+						aiContent.classList.remove('highlight');
+						aiTabButton.classList.remove('highlight-tab');
+					}, 2000);
+				}
+			}, 100);
         }
         
         // Получить цвет для ER в зависимости от значения
