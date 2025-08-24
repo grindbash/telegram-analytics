@@ -1368,7 +1368,6 @@ def generate_pdf():
             ai_report = ai_report.replace('photo', 'фото')
             ai_report = ai_report.replace('video', 'видео')
             ai_report = ai_report.replace('media', 'медиа')
-            ai_report = ai_report.replace('**', '')  # ← Добавьте эту строку для удаления всех **
 
             # Разделяем отчет на секции по двойным переносам
             sections = ai_report.split('\n\n')
@@ -1377,6 +1376,9 @@ def generate_pdf():
                 section = section.strip()
                 if not section:
                     continue
+
+                # Удаляем все ** из секции
+                section = section.replace('**', '')
 
                 # Обрабатываем заголовки с цифрами (например, "2.1 Ключевые тенденции:")
                 if re.match(r'^\d+\.\d+', section) or re.match(r'^\d+\.', section):
