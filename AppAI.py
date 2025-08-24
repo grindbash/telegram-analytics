@@ -34,15 +34,31 @@ from urllib.parse import quote
 pdf_cache = {}
 CACHE_EXPIRY = 300  # 5 минут
 
+# Добавить в начале файла после импортов
+try:
+    pdfmetrics.registerFont(TTFont('DejaVuSans', 'static/fonts/DejaVuSans.ttf'))
+    pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', 'static/fonts/DejaVuSans-Bold.ttf'))
+    CYRILLIC_FONT_AVAILABLE = True
+except:
+    logger.warning("Шрифты DejaVuSans не найдены. Кириллица в PDF может отображаться некорректно.")
+    CYRILLIC_FONT_AVAILABLE = False
+
 def get_safe_filename(filename):
     """Создает безопасное имя файла для HTTP заголовков"""
     try:
-        return quote(filename)
+        # Для кириллических имен файлов
+        safe_name = filename.encode('utf-8').decode('latin-1', errors='ignore')
+        
+        # Заменяем проблемные символы
+        safe_name = re.sub(r'[^\w\-_.]', '_', safe_name)
+        
+        # Убедимся, что есть расширение
+        if not safe_name.endswith('.pdf'):
+            safe_name += '.pdf'
+            
+        return safe_name
     except:
-        try:
-            return filename.encode('ascii', 'ignore').decode('ascii') or 'telegram_report.pdf'
-        except:
-            return 'telegram_report.pdf'
+        return 'telegram_report.pdf'
 
 # Устанавливаем UTF-8 как стандартную кодировку
 if sys.stdout.encoding != 'UTF-8':
@@ -1233,8 +1249,13 @@ def download_pdf():
         response.headers['Content-Type'] = 'application/pdf'
         
         # Безопасное имя файла
+        # Безопасное имя файла
         safe_filename = get_safe_filename(cached_data['filename'])
+        
+        response = make_response(cached_data['pdf_data'])
+        response.headers['Content-Type'] = 'application/pdf'
         response.headers['Content-Disposition'] = f'attachment; filename="{safe_filename}"'
+        response.headers['Content-Disposition'] += f"; filename*=utf-8''{quote(safe_filename)}"
         
         # УДАЛЯЕМ ИЗ КЭША ПОСЛЕ УСПЕШНОЙ ОТДАЧИ
         del pdf_cache[cache_key]
@@ -1248,13 +1269,16 @@ def download_pdf():
 
 @app.route('/generate_pdf', methods=['POST'])
 def generate_pdf():
-    """Генерация PDF отчета с поддержкой кириллицы и смайлов"""
+    """Генерация PDF отчета с поддержкой кириллицы"""
     try:
-        # Используем стандартные шрифты с поддержкой Unicode
-        # Попробуем разные шрифты которые могут поддерживать кириллицу
-        available_fonts = ['Helvetica', 'Arial', 'Times-Roman', 'Courier']
-        base_font = 'Helvetica'
-        bold_font = 'Helvetica-Bold'
+        # Используем шрифты с поддержкой кириллицы
+        if CYRILLIC_FONT_AVAILABLE:
+            base_font = 'DejaVuSans'
+            bold_font = 'DejaVuSans-Bold'
+        else:
+            # Fallback на стандартные шрифты
+            base_font = 'Helvetica'
+            bold_font = 'Helvetica-Bold'
         
         # Проверяем какие шрифты доступны и поддерживают кириллицу
         try:
