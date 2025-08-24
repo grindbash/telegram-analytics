@@ -1384,7 +1384,7 @@ def generate_pdf():
                 elif section.startswith('**') and section.endswith('**'):
                     clean_section = section.replace('**', '')
                     elements.append(Paragraph(clean_section, styles['BoldRU']))
-                    elements.append(Spacer(1, 6)
+                    elements.append(Spacer(1, 6))
                 else:
                     # Обычный текст - обрабатываем списки
                     lines = section.split('\n')
