@@ -112,7 +112,7 @@
 
         /* Main Content Styles */
         .main-content {
-            display: none;
+            
             opacity: 0;
             transition: opacity 0.3s ease;
         }
@@ -1151,6 +1151,8 @@
                 showError(error.message || 'Произошла ошибка при загрузке данных');
             } finally {
                 hideLoadingModal();
+				// Добавьте эту строку
+				document.querySelector('.main-content').style.display = 'block';
             }
         }
 
