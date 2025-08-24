@@ -232,74 +232,73 @@
         }
 
         .tabs {
-			display: flex;
-			background: var(--tg-theme-secondary-bg-color, #f8f9fa);
-			border-radius: 8px;
-			padding: 4px;
-			margin-bottom: 16px;
-			overflow-x: auto;
-			-webkit-overflow-scrolling: touch;
-			gap: 4px; /* Добавляем равномерный отступ между вкладками */
-		}
+            display: flex;
+            background: var(--tg-theme-secondary-bg-color, #f8f9fa);
+            border-radius: 8px;
+            padding: 4px;
+            margin-bottom: 16px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            gap: 4px;
+        }
 
-		.tab {
-			flex: 1;
-			min-width: 0; /* Разрешаем сжатие */
-			padding: 8px 6px; /* Уменьшаем горизонтальные отступы */
-			text-align: center;
-			border-radius: 6px;
-			font-size: 11px; /* Немного уменьшаем размер шрифта */
-			font-weight: 500;
-			cursor: pointer;
-			transition: all 0.2s;
-			white-space: nowrap;
-			background: transparent;
-			border: none;
-			color: var(--tg-theme-text-color, #000000);
-			overflow: hidden;
-			text-overflow: ellipsis;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			gap: 4px;
-			line-height: 1.2;
-		}
+        .tab {
+            flex: 1;
+            min-width: 0;
+            padding: 8px 6px;
+            text-align: center;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            background: transparent;
+            border: none;
+            color: var(--tg-theme-text-color, #000000);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            line-height: 1.2;
+        }
 
-		.tab.active {
-			background: var(--tg-theme-button-color, #3390ec);
-			color: var(--tg-theme-button-text-color, white);
-			transform: none; /* Убираем трансформацию для активной вкладки */
-			margin: 0; /* Убираем возможные отступы */
-			box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-		}
+        .tab.active {
+            background: var(--tg-theme-button-color, #3390ec);
+            color: var(--tg-theme-button-text-color, white);
+            transform: none;
+            margin: 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
 
-		.tab-content.highlight {
-			animation: highlight 2s ease;
-		}
+        .tab-content.highlight {
+            animation: highlight 2s ease;
+        }
 
-		@keyframes highlight {
-			0% { background-color: transparent; }
-			20% { background-color: rgba(59, 130, 246, 0.1); }
-			40% { background-color: transparent; }
-			60% { background-color: rgba(59, 130, 246, 0.1); }
-			80% { background-color: transparent; }
-			100% { background-color: transparent; }
-		}
+        @keyframes highlight {
+            0% { background-color: transparent; }
+            20% { background-color: rgba(59, 130, 246, 0.1); }
+            40% { background-color: transparent; }
+            60% { background-color: rgba(59, 130, 246, 0.1); }
+            80% { background-color: transparent; }
+            100% { background-color: transparent; }
+        }
 
-		/* Для мобильной версии уменьшим анимацию */
-		@media (max-width: 768px) {
-			.tab-content.highlight {
-				animation: highlight-mobile 1.5s ease;
-			}
-			
-			@keyframes highlight-mobile {
-				0% { background-color: transparent; }
-				30% { background-color: rgba(59, 130, 246, 0.1); }
-				60% { background-color: transparent; }
-				100% { background-color: transparent; }
-			}
-		}
-		
+        @media (max-width: 768px) {
+            .tab-content.highlight {
+                animation: highlight-mobile 1.5s ease;
+            }
+            
+            @keyframes highlight-mobile {
+                0% { background-color: transparent; }
+                30% { background-color: rgba(59, 130, 246, 0.1); }
+                60% { background-color: transparent; }
+                100% { background-color: transparent; }
+            }
+        }
+        
         .card {
             background: var(--tg-theme-secondary-bg-color, #ffffff);
             border-radius: 12px;
@@ -734,6 +733,14 @@
             .ai-actions {
                 flex-direction: column;
             }
+
+            /* Исправление для мобильных устройств */
+            .ai-content {
+                padding: 12px;
+                font-size: 14px;
+                line-height: 1.4;
+                white-space: normal;
+            }
         }
 
         @media (max-width: 480px) {
@@ -758,36 +765,37 @@
                 height: 12px;
             }
         }
-		/* Мобильная адаптация */
-		@media (max-width: 768px) {
-			.tabs {
-				gap: 2px;
-				padding: 3px;
-			}
-			
-			.tab {
-				padding: 6px 4px;
-				font-size: 10px;
-				min-width: 50px;
-			}
-		}
+        
+        /* Мобильная адаптация */
+        @media (max-width: 768px) {
+            .tabs {
+                gap: 2px;
+                padding: 3px;
+            }
+            
+            .tab {
+                padding: 6px 4px;
+                font-size: 10px;
+                min-width: 50px;
+            }
+        }
 
-		@media (max-width: 480px) {
-			.tab {
-				font-size: 9px;
-				padding: 5px 3px;
-			}
-			
-			/* Скрываем текст на очень маленьких экранах, оставляем только иконки */
-			.tab span {
-				display: none;
-			}
-			
-			.tab::before {
-				content: attr(data-icon);
-				font-size: 12px;
-			}
-		}
+        @media (max-width: 480px) {
+            .tab {
+                font-size: 9px;
+                padding: 5px 3px;
+            }
+            
+            /* Скрываем текст на очень маленьких экранах, оставляем только иконки */
+            .tab span {
+                display: none;
+            }
+            
+            .tab::before {
+                content: attr(data-icon);
+                font-size: 12px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -866,23 +874,23 @@
         </div>
 
         <!-- Navigation Tabs -->
-		<div class="tabs">
-			<button class="tab active haptic-feedback" data-icon="📈" onclick="switchTab(event, 'overview')">
-				<span>📈</span> Обзор
-			</button>
-			<button class="tab haptic-feedback" data-icon="📝" onclick="switchTab(event, 'content')">
-				<span>📝</span> Контент
-			</button>
-			<button class="tab haptic-feedback" data-icon="⏰" onclick="switchTab(event, 'timing')">
-				<span>⏰</span> Время
-			</button>
-			<button class="tab haptic-feedback" data-icon="🏆" onclick="switchTab(event, 'posts')">
-				<span>🏆</span> Топ
-			</button>
-			<button class="tab haptic-feedback" data-icon="🤖" onclick="switchTab(event, 'ai')">
-				<span>🤖</span> ИИ Анализ
-			</button>
-		</div>
+        <div class="tabs">
+            <button class="tab active haptic-feedback" data-icon="📈" onclick="switchTab(event, 'overview')">
+                <span>📈</span> Обзор
+            </button>
+            <button class="tab haptic-feedback" data-icon="📝" onclick="switchTab(event, 'content')">
+                <span>📝</span> Контент
+            </button>
+            <button class="tab haptic-feedback" data-icon="⏰" onclick="switchTab(event, 'timing')">
+                <span>⏰</span> Время
+            </button>
+            <button class="tab haptic-feedback" data-icon="🏆" onclick="switchTab(event, 'posts')">
+                <span>🏆</span> Топ
+            </button>
+            <button class="tab haptic-feedback" data-icon="🤖" onclick="switchTab(event, 'ai')">
+                <span>🤖</span> ИИ Анализ
+            </button>
+        </div>
 
         <!-- Tab Contents -->
         <div id="overview" class="tab-content active">
@@ -943,10 +951,10 @@
             const translations = {
                 'text': 'текст',
                 'video': 'видео',
-				'video_with_text': 'видео и текст',
+                'video_with_text': 'видео и текст',
                 'photo': 'фото',
-				'photo_with_text': 'фото и текст',
-				'mixed_media_with_text':'смешанный формат',
+                'photo_with_text': 'фото и текст',
+                'mixed_media_with_text':'смешанный формат',
                 'media': 'медиа',
                 'poll': 'опрос',
                 'voice': 'голосовое',
@@ -1360,67 +1368,67 @@
             }).join('');
         }
 
-		function updateAITab(data) {
-			const tab = document.getElementById('ai');
-			if (!tab) return;
-			
-			if (data.emptyData) {
-				tab.innerHTML = '<div class="error">Нет данных для ИИ анализа</div>';
-				return;
-			}
-			
-			// Проверяем период
-			const periodSelect = document.getElementById('period-select');
-			const hoursBack = periodSelect ? parseInt(periodSelect.value) : 24;
-			
-			const hasAIAnalysis = currentAIData !== null && currentAIData !== undefined;
-			const formattedAIData = hasAIAnalysis ? formatAIAnalysis(currentAIData) : '';
-			
-			// Если период меньше 7 дней, показываем сообщение
-			if (hoursBack < 168) {
-				tab.innerHTML = `
-					<div class="card">
-						<h3 class="card-title">🤖 ИИ Анализ канала</h3>
-						<div class="ai-content">
-							ИИ анализ доступен только для периодов 7 и 30 дней.
-						</div>
-					</div>
-				`;
-				return;
-			}
-			
-			tab.innerHTML = `
-				<div class="card">
-					<h3 class="card-title">🤖 ИИ Анализ канала</h3>
-					
-					<div id="ai-content" class="ai-content">
-						${hasAIAnalysis ? formattedAIData : 'ИИ анализ еще не выполнен. Нажмите кнопку "Запросить анализ" для получения детальных рекомендаций. Анализ может занять до 2 минут!'}
-					</div>
-					
-					<div class="ai-actions">
-						<button id="request-ai" class="ai-button haptic-feedback" ${hasAIAnalysis ? 'style="display: none;"' : ''}>
-							<svg viewBox="0 0 24 24">
-								<path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v2h8z"/>
-							</svg>
-							Запросить ИИ анализ
-						</button>
-						
-						<button id="regenerate-ai" class="ai-button haptic-feedback" ${!hasAIAnalysis ? 'style="display: none;"' : ''}>
-							<svg viewBox="0 0 24 24">
-								<path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
-							</svg>
-							Обновить анализ
-						</button>
-					</div>
-				</div>
-			`;
-			
-			const requestBtn = document.getElementById('request-ai');
-			if (requestBtn) requestBtn.addEventListener('click', requestAIAnalysis);
-			
-			const regenerateBtn = document.getElementById('regenerate-ai');
-			if (regenerateBtn) regenerateBtn.addEventListener('click', requestAIAnalysis);
-		}
+        function updateAITab(data) {
+            const tab = document.getElementById('ai');
+            if (!tab) return;
+            
+            if (data.emptyData) {
+                tab.innerHTML = '<div class="error">Нет данных для ИИ анализа</div>';
+                return;
+            }
+            
+            // Проверяем период
+            const periodSelect = document.getElementById('period-select');
+            const hoursBack = periodSelect ? parseInt(periodSelect.value) : 24;
+            
+            const hasAIAnalysis = currentAIData !== null && currentAIData !== undefined;
+            const formattedAIData = hasAIAnalysis ? formatAIAnalysis(currentAIData) : '';
+            
+            // Если период меньше 7 дней, показываем сообщение
+            if (hoursBack < 168) {
+                tab.innerHTML = `
+                    <div class="card">
+                        <h3 class="card-title">🤖 ИИ Анализ канала</h3>
+                        <div class="ai-content">
+                            ИИ анализ доступен только для периодов 7 и 30 дней.
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            tab.innerHTML = `
+                <div class="card">
+                    <h3 class="card-title">🤖 ИИ Анализ канала</h3>
+                    
+                    <div id="ai-content" class="ai-content">
+                        ${hasAIAnalysis ? formattedAIData : 'ИИ анализ еще не выполнен. Нажмите кнопку "Запросить анализ" для получения детальных рекомендаций. Анализ может занять до 2 минут!'}
+                    </div>
+                    
+                    <div class="ai-actions">
+                        <button id="request-ai" class="ai-button haptic-feedback" ${hasAIAnalysis ? 'style="display: none;"' : ''}>
+                            <svg viewBox="0 0 24 24">
+                                <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v2h8z"/>
+                            </svg>
+                            Запросить ИИ анализ
+                        </button>
+                        
+                        <button id="regenerate-ai" class="ai-button haptic-feedback" ${!hasAIAnalysis ? 'style="display: none;"' : ''}>
+                            <svg viewBox="0 0 24 24">
+                                <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                            </svg>
+                            Обновить анализ
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            const requestBtn = document.getElementById('request-ai');
+            if (requestBtn) requestBtn.addEventListener('click', requestAIAnalysis);
+            
+            const regenerateBtn = document.getElementById('regenerate-ai');
+            if (regenerateBtn) regenerateBtn.addEventListener('click', requestAIAnalysis);
+        }
 
         // Инициализация графиков
         function initContentChart(labels, data) {
@@ -1562,23 +1570,23 @@
                     throw new Error('Нет данных для анализа');
                 }
                 // Проверяем выбранный период
-				const periodSelect = document.getElementById('period-select');
-				const hoursBack = periodSelect ? parseInt(periodSelect.value) : 24;
-				
-				if (hoursBack < 168) { // Меньше 7 дней (168 часов)
-					if (tg?.showAlert) {
-						tg.showAlert("ИИ анализ доступен только для периодов 7 и 30 дней");
-					} else {
-						alert("ИИ анализ доступен только для периодов 7 и 30 дней");
-					}
-					return;
-				}
+                const periodSelect = document.getElementById('period-select');
+                const hoursBack = periodSelect ? parseInt(periodSelect.value) : 24;
+                
+                if (hoursBack < 168) { // Меньше 7 дней (168 часов)
+                    if (tg?.showAlert) {
+                        tg.showAlert("ИИ анализ доступен только для периодов 7 и 30 дней");
+                    } else {
+                        alert("ИИ анализ доступен только для периодов 7 и 30 дней");
+                    }
+                    return;
+                }
                 const aiTab = document.getElementById('ai');
                 if (!aiTab) return;
                 
                 aiTab.innerHTML = `
                     <div class="ai-loader">
-                        <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcDl1eGJ0Z2F6dW1yZzR0dWZzZ3R5Z2Z6eGZ6eGZ6eGZ6eGZ6eGZ6eCZlcD12MV9pbnRlcm5aLF9naWZfYnlfaWQmY3Q9Zw/3o7bu3XilJ5BOiSGic/giphy.gif" alt="AI Thinking">
+                        <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcDl1eGJ0Z2F6dW1yZzR0dWZzZ3R5Z2Z6eGZ6eGZ6eGZ6eGZ6eGZ6eCZlcD12MV9pbnRlcm5aLF9naWZfYnl_aWQmY3Q9Zw/3o7bu3XilJ5BOiSGic/giphy.gif" alt="AI Thinking">
                         <p>ИИ анализирует данные...</p>
                     </div>
                 `;
@@ -1610,16 +1618,19 @@
                         currentAIData = "♻️ Этот анализ был загружен из кэша (создан менее часа назад)\n\n" + currentAIData;
                     }
                     // Обновляем вкладку ИИ
-					updateAITab(currentData);
-					
-					// Анимируем вкладку (мигание)
-					const aiTab = document.getElementById('ai');
-					if (aiTab) {
-						aiTab.classList.add('highlight');
-						setTimeout(() => {
-							aiTab.classList.remove('highlight');
-						}, 2000);
-					}
+                    updateAITab(currentData);
+                    
+                    // Анимируем вкладку (мигание) с небольшой задержкой для обновления DOM
+                    setTimeout(() => {
+                        const aiTab = document.getElementById('ai');
+                        if (aiTab) {
+                            aiTab.classList.add('highlight');
+                            setTimeout(() => {
+                                aiTab.classList.remove('highlight');
+                            }, 2000);
+                        }
+                    }, 100);
+                    
                     // Применяем форматирование к ИИ-анализу
                     const formattedAIData = formatAIAnalysis(currentAIData);
                     
@@ -1690,7 +1701,7 @@
                         Telegram.WebApp.openLink(downloadUrl);
                         
                         // Показываем сообщение пользователю
-                        Telegram.WebApp.showAlert('PDF отчет готов к скачиванию. Откроется новая вкладка.');
+                        Telegram.WebApp.showAlert('PDF отчет готов к скачивание. Откроется новая вкладка.');
                     } else {
                         // Для десктопных браузеров используем стандартный метод
                         const link = document.createElement('a');
@@ -1943,11 +1954,11 @@
                     
                     // Загружаем данные
                     loadData(hours);
-					
-					// Обновляем вкладку ИИ анализа при смене периода
-					if (currentData) {
-						updateAITab(currentData);
-					}
+                    
+                    // Обновляем вкладку ИИ анализа при смене периода
+                    if (currentData) {
+                        updateAITab(currentData);
+                    }
                 });
             }
         }
