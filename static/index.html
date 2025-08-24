@@ -1051,40 +1051,41 @@
         }
 
         // Показать основной контент
-        function showMainContent() {
-            const mainContent = document.querySelector('.main-content');
+		function showMainContent() {
+			const mainContent = document.querySelector('.main-content');
 			if (mainContent) {
-				mainContent.style.display = 'block'; // Добавьте эту строку
-				mainContent.classList.add('visible');
+				mainContent.style.display = 'block';
+				setTimeout(() => {
+					mainContent.classList.add('visible');
+				}, 50);
 			}
-			// Анимируем вкладку (мигание) с небольшой задержкой для обновления DOM
+			
+			// Мигаем вкладкой ИИ только если есть актуальные данные анализа
 			setTimeout(() => {
-				// Находим кнопку вкладки ИИ анализа
-				const aiTabButtons = document.querySelectorAll('.tab');
-				let aiTabButton = null;
-				
-				aiTabButtons.forEach(tab => {
-					if (tab.textContent.includes('ИИ') || tab.textContent.includes('🤖')) {
-						aiTabButton = tab;
+				if (currentAIData && !isAILoading) {
+					const aiTabButtons = document.querySelectorAll('.tab');
+					let aiTabButton = null;
+					
+					aiTabButtons.forEach(tab => {
+						if (tab.textContent.includes('ИИ') || tab.textContent.includes('🤖')) {
+							aiTabButton = tab;
+						}
+					});
+					
+					const aiContent = document.getElementById('ai');
+					
+					if (aiTabButton && aiContent) {
+						aiContent.classList.add('highlight');
+						aiTabButton.classList.add('highlight-tab');
+						
+						setTimeout(() => {
+							aiContent.classList.remove('highlight');
+							aiTabButton.classList.remove('highlight-tab');
+						}, 2000);
 					}
-				});
-				
-				const aiContent = document.getElementById('ai');
-				
-				if (aiTabButton && aiContent) {
-					// Добавляем анимацию к контенту
-					aiContent.classList.add('highlight');
-					
-					// Добавляем анимацию к кнопке вкладки
-					aiTabButton.classList.add('highlight-tab');
-					
-					setTimeout(() => {
-						aiContent.classList.remove('highlight');
-						aiTabButton.classList.remove('highlight-tab');
-					}, 2000);
 				}
 			}, 100);
-        }
+		}
         
         // Получить цвет для ER в зависимости от значения
         function getERColor(value) {
