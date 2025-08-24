@@ -1271,52 +1271,15 @@ def download_pdf():
 def generate_pdf():
     """Генерация PDF отчета с поддержкой кириллицы"""
     try:
+        # Добавляем импорт Paragraph
+        from reportlab.platypus import Paragraph
+        
         # Используем шрифты с поддержкой кириллицы
         if CYRILLIC_FONT_AVAILABLE:
             base_font = 'DejaVuSans'
             bold_font = 'DejaVuSans-Bold'
         else:
             # Fallback на стандартные шрифты
-            base_font = 'Helvetica'
-            bold_font = 'Helvetica-Bold'
-        
-        # Проверяем какие шрифты доступны и поддерживают кириллицу
-        try:
-            from reportlab.pdfbase import pdfmetrics
-            from reportlab.pdfbase.ttfonts import TTFont
-            
-            # Тестовый текст для проверки шрифтов
-            test_text = "Тест русских букв"
-            
-            for font_candidate in available_fonts:
-                try:
-                    # Пробуем создать простой PDF с этим шрифтом
-                    test_buffer = BytesIO()
-                    test_doc = SimpleDocTemplate(test_buffer, pagesize=letter)
-                    test_styles = getSampleStyleSheet()
-                    
-                    # Создаем тестовый стиль
-                    test_style = test_styles['Normal'].clone('test')
-                    test_style.fontName = font_candidate
-                    
-                    # Пробуем сгенерировать параграф
-                    from reportlab.platypus import Paragraph
-                    test_elements = [Paragraph(test_text, test_style)]
-                    test_doc.build(test_elements)
-                    
-                    # Если успешно - используем этот шрифт
-                    base_font = font_candidate
-                    bold_font = f"{font_candidate}-Bold" if font_candidate != 'Helvetica' else 'Helvetica-Bold'
-                    logger.info(f"Используем шрифт: {font_candidate}")
-                    break
-                    
-                except Exception as font_test_error:
-                    logger.debug(f"Шрифт {font_candidate} не подошел: {font_test_error}")
-                    continue
-                    
-        except Exception as e:
-            logger.warning(f"Не удалось определить оптимальный шрифт: {str(e)}")
-            # Используем Helvetica по умолчанию
             base_font = 'Helvetica'
             bold_font = 'Helvetica-Bold'
 
@@ -1528,7 +1491,7 @@ def generate_pdf():
         
         if is_direct_download:
             response = make_response(pdf_data)
-            response.headers['Content-Type': 'application/pdf']
+            response.headers['Content-Type'] = 'application/pdf'
             response.headers['Content-Disposition'] = f'attachment; filename="{get_safe_filename(filename)}"'
             return response
         else:
