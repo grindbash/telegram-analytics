@@ -171,7 +171,7 @@ SUPABASE_HEADERS = {
 # Конфигурация OpenRouter
 OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
-AI_MODEL = "qwen/qwen3-235b-a22b:free"
+AI_MODEL = "deepseek/deepseek-chat-v3.1:free"
 
 class TelegramAnalytics:
     def __init__(self):
@@ -311,6 +311,64 @@ class TelegramAnalytics:
         except Exception as e:
             logger.error(f"Ошибка получения информации о канале: {str(e)}", exc_info=True)
             return None
+
+    # Добавляем метод получения истории постов
+    async def get_channel_history(self, channel_identifier, limit=30):
+        """Получение истории текстовых постов из канала"""
+        try:
+            if not self.client or not self.client.is_connected():
+                if not await self.init_client():
+                    return {'error': 'Не удалось подключиться к Telegram'}
+            
+            # Получаем информацию о канале
+            channel_info = await self.get_channel_info(channel_identifier)
+            if not channel_info or 'error' in channel_info:
+                return {
+                    'error': 'Канал не найден или приватный',
+                    'details': channel_info.get('message', 'Убедитесь что вы подписаны на канал')
+                }
+            
+            # Получаем сообщения
+            all_messages = []
+            try:
+                # Получаем больше сообщений, так как будем фильтровать только текстовые
+                all_messages = await self.client.get_messages(
+                    channel_identifier, 
+                    limit=min(limit * 2, 100)  # Берем в 2 раза больше для фильтрации
+                )
+            except Exception as e:
+                logger.error(f"Ошибка получения сообщений: {str(e)}", exc_info=True)
+                return {'error': f'Ошибка получения сообщений: {str(e)}'}
+            
+            # Фильтруем текстовые посты
+            text_posts = []
+            for msg in all_messages:
+                if len(text_posts) >= limit:
+                    break
+                    
+                if msg.text and msg.text.strip():  # Только сообщения с текстом
+                    moscow_time = msg.date.replace(tzinfo=pytz.UTC).astimezone(self.moscow_tz)
+                    
+                    text_posts.append({
+                        'id': msg.id,
+                        'date': moscow_time.strftime('%Y-%m-%d %H:%M'),
+                        'text': msg.text,
+                        'views': self._get_views(msg),
+                        'reactions': self._get_reactions(msg),
+                        'forwards': self._get_forwards(msg),
+                        'comments': self._get_comments(msg)
+                    })
+            
+            return {
+                'channel_info': channel_info,
+                'posts': text_posts,
+                'total_count': len(text_posts),
+                'requested_limit': limit
+            }
+            
+        except Exception as e:
+            logger.error(f"Ошибка получения истории: {str(e)}", exc_info=True)
+            return {'error': f'Ошибка получения истории: {str(e)}'}
     
     async def generate_ai_analysis(self, report_data):
         """Генерация ИИ анализа через OpenRouter"""
@@ -1141,6 +1199,29 @@ async def search_channels(query):
         logger.error(f"Ошибка поиска канала: {str(e)}", exc_info=True)
     
     return results
+
+@app.route('/channel_history', methods=['POST'])
+def get_channel_history():
+    """Получение истории постов из канала (последние 20-30 текстовых постов)"""
+    try:
+        data = request.get_json()
+        channel_identifier = data.get('channel_username') or data.get('channel_id')
+        limit = min(int(data.get('limit', 30)), 50)  # Максимум 50 постов
+        
+        if not channel_identifier:
+            return jsonify({'error': 'Не указан username или ID канала'}), 400
+
+        # Получаем глобальный event loop
+        loop = current_app.config['GLOBAL_EVENT_LOOP']
+        
+        # Запускаем получение истории
+        result = loop.run_until_complete(analytics.get_channel_history(channel_identifier, limit))
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Ошибка при получении истории канала: {str(e)}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/download_pdf', methods=['GET'])
 def download_pdf():
