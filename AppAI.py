@@ -171,7 +171,7 @@ SUPABASE_HEADERS = {
 # Конфигурация OpenRouter
 OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
-AI_MODEL = "deepseek/deepseek-chat-v3.1:free"
+AI_MODEL = "deepseek/deepseek-v3.1-terminus"
 
 class TelegramAnalytics:
     def __init__(self):
