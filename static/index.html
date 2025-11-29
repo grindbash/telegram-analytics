@@ -1435,7 +1435,7 @@
         }
 
 		function updateAITab(data) {
-			const tab = document.getElementById('ai');
+		const tab = document.getElementById('ai');
 			if (!tab) return;
 			
 			if (data.emptyData) {
@@ -1445,13 +1445,15 @@
 			
 			const periodSelect = document.getElementById('period-select');
 			const hoursBack = periodSelect ? parseInt(periodSelect.value) : 24;
+			const usedFallback = data.analysis_period?.used_fallback;
 			
-			if (hoursBack < 168) {
+			// Разрешаем ИИ анализ для fallback режима (неактивные каналы)
+			if (hoursBack < 168 && !usedFallback) {
 				tab.innerHTML = `
 					<div class="card">
 						<h3 class="card-title">🤖 ИИ Анализ канала</h3>
 						<div class="ai-content">
-							ИИ анализ доступен только для периодов 7 и 30 дней.
+							ИИ анализ доступен только для периодов 7 и 30 дней, а также для неактивных каналов (последний пост более 30 дней назад).
 						</div>
 					</div>
 				`;
@@ -1471,9 +1473,23 @@
 			const hasAIAnalysis = currentAIData !== null && currentAIData !== undefined;
 			const formattedAIData = hasAIAnalysis ? formatAIAnalysis(currentAIData) : '';
 			
+			// Добавляем пояснение для fallback режима
+			let fallbackNote = '';
+			if (usedFallback) {
+				fallbackNote = `
+					<div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 14px; color: #856404;">
+						<strong>ℹ️ Анализ неактивного канала:</strong> 
+						${data.analysis_period?.fallback_reason || 'Канал неактивен более 30 дней'}. 
+						ИИ анализ выполнен по последним 30 постам.
+					</div>
+				`;
+			}
+			
 			tab.innerHTML = `
 				<div class="card">
 					<h3 class="card-title">🤖 ИИ Анализ канала</h3>
+					
+					${fallbackNote}
 					
 					<div id="ai-content" class="ai-content">
 						${hasAIAnalysis ? formattedAIData : 'ИИ анализ еще не выполнен. Нажмите кнопку "Запросить анализ" для получения детальных рекомендаций. Анализ может занять до 2 минут!'}
@@ -1669,15 +1685,17 @@
 					throw new Error('Нет данных для анализа');
 				}
 				
-				// Проверяем выбранный период
+				// Проверяем выбранный период и fallback режим
 				const periodSelect = document.getElementById('period-select');
 				const hoursBack = periodSelect ? parseInt(periodSelect.value) : 24;
+				const usedFallback = currentData.analysis_period?.used_fallback;
 				
-				if (hoursBack < 168) { // Меньше 7 дней (168 часов)
+				// Разрешаем ИИ анализ для периодов 7+ дней ИЛИ для fallback режима
+				if (hoursBack < 168 && !usedFallback) {
 					if (tg?.showAlert) {
-						tg.showAlert("ИИ анализ доступен только для периодов 7 и 30 дней");
+						tg.showAlert("ИИ анализ доступен только для периодов 7 и 30 дней, а также для неактивных каналов");
 					} else {
-						alert("ИИ анализ доступен только для периодов 7 и 30 дней");
+						alert("ИИ анализ доступен только для периодов 7 и 30 дней, а также для неактивных каналов");
 					}
 					return;
 				}
@@ -1750,24 +1768,24 @@
 				} else {
 					throw new Error(result.error || 'Ошибка ИИ анализа');
 				}
-			} catch (error) {
-				console.error('Ошибка ИИ анализа:', error);
-				const aiTab = document.getElementById('ai');
-				if (aiTab) {
-					aiTab.innerHTML = `
-						<div class="error">
-							<p>${error.message}</p>
-							<button onclick="requestAIAnalysis()" class="tg-button" style="margin-top: 10px;">
-								Попробовать снова
-							</button>
-						</div>
-					`;
+				} catch (error) {
+						console.error('Ошибка ИИ анализа:', error);
+						const aiTab = document.getElementById('ai');
+						if (aiTab) {
+							aiTab.innerHTML = `
+								<div class="error">
+									<p>${error.message}</p>
+									<button onclick="requestAIAnalysis()" class="tg-button" style="margin-top: 10px;">
+										Попробовать снова
+									</button>
+								</div>
+							`;
+						}
+					} finally {
+						isAILoading = false;
+						hideLoadingModal();
+					}
 				}
-			} finally {
-				isAILoading = false;
-				hideLoadingModal();
-			}
-		}
 
         // Генерация PDF
         async function generatePDF() {
