@@ -1217,18 +1217,27 @@
             }
         }
 
-        function updateHeader(data) {
-            const channelName = document.getElementById('channel-name');
-            if (channelName) channelName.textContent = data.channel_info?.title || currentChannel?.title || 'Неизвестный канал';
-            
-            if (data.analysis_period) {
-                const periodText = getPeriodText(data.analysis_period.hours_back);
-                const periodElement = document.getElementById('analysis-period');
-                if (periodElement) {
-                    periodElement.textContent = `Анализ за ${periodText}: ${data.analysis_period.start_time} - ${data.analysis_period.end_time}`;
-                }
-            }
-        }
+		function updateHeader(data) {
+			const channelName = document.getElementById('channel-name');
+			if (channelName) channelName.textContent = data.channel_info?.title || currentChannel?.title || 'Неизвестный канал';
+			
+			if (data.analysis_period) {
+				const periodElement = document.getElementById('analysis-period');
+				if (periodElement) {
+					if (data.analysis_period.used_fallback) {
+						// Режим fallback - показываем информацию о последних постах
+						periodElement.textContent = `Данные за ${data.analysis_period.actual_period}`;
+						if (data.analysis_period.fallback_reason) {
+							periodElement.textContent += ` (${data.analysis_period.fallback_reason})`;
+						}
+					} else {
+						// Нормальный режим - показываем временной период
+						const periodText = getPeriodText(data.analysis_period.hours_back);
+						periodElement.textContent = `Анализ за ${periodText}: ${data.analysis_period.start_time} - ${data.analysis_period.end_time}`;
+					}
+				}
+			}
+		}
 
         function updateOverviewTab(data) {
             const tab = document.getElementById('overview');
