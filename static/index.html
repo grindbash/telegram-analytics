@@ -836,17 +836,15 @@
     <div id="channel-modal" class="welcome-screen" style="display: none;">
         <h1 class="welcome-title">Выберите канал</h1>
         <div class="search-box">
-            <input type="text" id="channel-search" placeholder="Введите @username или название" 
-                   style="width: 100%; padding: 12px; border-radius: 12px; border: none; margin-bottom: 16px; font-size: 16px;">
-            <button id="search-button" class="tg-button haptic-feedback">Найти каналы</button>
-        </div>
-        
-        <div style="margin-top: 20px; text-align: center;">
-            <p>Или попробуйте:</p>
-            <button id="direct-link" class="tg-button haptic-feedback" style="margin-top: 10px;">
-                Перейти к анализу по @username
-            </button>
-        </div>
+		<input type="text" id="channel-search" placeholder="Введите @username канала" 
+				style="width: 100%; padding: 12px; border-radius: 12px; border: none; margin-bottom: 16px; font-size: 16px;">
+		</div>
+
+		<div style="text-align: center;">
+			<button id="direct-link" class="tg-button haptic-feedback">
+				Перейти к анализу
+			</button>
+		</div>
         
         <div id="search-results" class="search-results"></div>
     </div>

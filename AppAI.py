@@ -660,7 +660,7 @@ class TelegramAnalytics:
         return list(set(media_types))
     
     async def analyze_channel(self, channel_identifier, hours_back=24):
-        """Основной метод анализа канала с учётом группировки сообщений"""
+        """Основной метод анализа канала с автоматическим fallback на последние 30 постов"""
         try:
             # Проверяем подключение клиента
             if not self.client or not self.client.is_connected():
@@ -675,7 +675,7 @@ class TelegramAnalytics:
                     'details': channel_info.get('message', 'Убедитесь что вы подписаны на канал')
                 }
             
-            # Временной диапазон
+            # Временной диапазон для запрошенного периода
             end_time = datetime.now(self.moscow_tz)
             start_time = end_time - timedelta(hours=hours_back)
             
@@ -683,17 +683,22 @@ class TelegramAnalytics:
             logger.info(f"Текущее время сервера: {datetime.now(self.moscow_tz)}")
             logger.info(f"Диапазон анализа: {start_time} - {end_time}")
             
-            # Получаем сообщения
+            # Получаем все доступные сообщения
             all_messages = []
             last_message_date = None
             try:
-                # Получаем все доступные сообщения
                 all_messages = await self.client.get_messages(
                     channel_identifier, 
-                    limit=1000  # Лимит сообщений для анализа
+                    limit=1000
                 )
                 
                 logger.info(f"Получено сообщений: {len(all_messages)}")
+                
+                # Определяем дату последнего поста
+                if all_messages:
+                    last_message_date = max(msg.date.replace(tzinfo=pytz.UTC).astimezone(self.moscow_tz) 
+                                          for msg in all_messages if msg.date)
+                    logger.info(f"Последний пост: {last_message_date}")
                 
             except ChannelPrivateError:
                 return {
@@ -704,24 +709,87 @@ class TelegramAnalytics:
                 logger.error(f"Ошибка получения сообщений: {str(e)}", exc_info=True)
                 return {'error': f'Ошибка получения сообщений: {str(e)}'}
             
+            # Проверяем, когда был последний пост
+            used_fallback = False
+            fallback_reason = None
+            actual_period_text = self.get_period_text(hours_back)
+            
+            if last_message_date:
+                days_since_last_post = (datetime.now(self.moscow_tz) - last_message_date).days
+                logger.info(f"Дней с последнего поста: {days_since_last_post}")
+                
+                # Если последний пост был больше 30 дней назад, используем fallback
+                if days_since_last_post > 30:
+                    used_fallback = True
+                    fallback_reason = f"Последний пост был {days_since_last_post} дней назад"
+                    logger.info(f"Используем fallback: {fallback_reason}")
+            
+            # Фильтруем сообщения по временному диапазону или используем fallback
+            messages_to_process = []
+            
+            if used_fallback:
+                # Fallback режим: берем последние 30 постов
+                messages_to_process = all_messages[:30]
+                actual_period_text = "последние 30 постов"
+                logger.info(f"Fallback режим: анализируем {len(messages_to_process)} постов")
+            else:
+                # Нормальный режим: фильтруем по временному диапазону
+                for msg in all_messages:
+                    if not msg.date:
+                        continue
+                        
+                    msg_time = msg.date.replace(tzinfo=pytz.UTC).astimezone(self.moscow_tz)
+                    if start_time <= msg_time <= end_time:
+                        messages_to_process.append(msg)
+                
+                logger.info(f"Нормальный режим: найдено {len(messages_to_process)} постов за период")
+            
+            # Если в нормальном режиме нет постов, но канал активный (последний пост < 30 дней)
+            # то все равно показываем, что постов нет за период
+            if not used_fallback and not messages_to_process:
+                return {
+                    'channel_info': channel_info,
+                    'analysis_period': {
+                        'hours_back': hours_back,
+                        'start_time': start_time.strftime('%d.%m.%Y %H:%M'),
+                        'end_time': end_time.strftime('%d.%m.%Y %H:%M'),
+                        'actual_period': actual_period_text,
+                        'used_fallback': False
+                    },
+                    'total_posts': 0,
+                    'message': 'Нет постов за указанный период',
+                    'last_message_date': last_message_date.strftime('%Y-%m-%d %H:%M') if last_message_date else 'Неизвестно'
+                }
+            
             # Группируем сообщения по grouped_id
             grouped_messages = defaultdict(list)
             single_messages = []
             
-            for msg in all_messages:
+            for msg in messages_to_process:
                 if not msg.date:
                     continue
                     
-                msg_time = msg.date.replace(tzinfo=pytz.UTC).astimezone(self.moscow_tz)
-                if not last_message_date:
-                    last_message_date = msg_time
-                
-                # Фильтруем по временному диапазону
-                if start_time <= msg_time <= end_time:
-                    if hasattr(msg, 'grouped_id') and msg.grouped_id:
-                        grouped_messages[msg.grouped_id].append(msg)
-                    else:
-                        single_messages.append(msg)
+                if hasattr(msg, 'grouped_id') and msg.grouped_id:
+                    grouped_messages[msg.grouped_id].append(msg)
+                else:
+                    single_messages.append(msg)
+            
+            logger.info(f"Обработано постов: {len(messages_to_process)} (групп: {len(grouped_messages)}, одиночных: {len(single_messages)})")
+            
+            if not messages_to_process:
+                return {
+                    'channel_info': channel_info,
+                    'analysis_period': {
+                        'hours_back': hours_back,
+                        'start_time': start_time.strftime('%d.%m.%Y %H:%M'),
+                        'end_time': end_time.strftime('%d.%m.%Y %H:%M'),
+                        'actual_period': actual_period_text,
+                        'used_fallback': used_fallback
+                    },
+                    'total_posts': 0,
+                    'message': 'Нет постов для анализа',
+                    'last_message_date': last_message_date.strftime('%Y-%m-%d %H:%M') if last_message_date else 'Неизвестно'
+                }
             
             # Обрабатываем группы сообщений
             processed_posts = []
@@ -751,15 +819,6 @@ class TelegramAnalytics:
                 })
             
             logger.info(f"Обработано постов: {len(processed_posts)} (групп: {len(grouped_messages)}, одиночных: {len(single_messages)})")
-            
-            if not processed_posts:
-                return {
-                    'channel_info': channel_info,
-                    'period': f'{hours_back} часов',
-                    'total_posts': 0,
-                    'message': 'Нет постов за указанный период',
-                    'last_message_date': last_message_date.strftime('%Y-%m-%d %H:%M') if last_message_date else 'Неизвестно'
-                }
             
             # Анализируем данные с использованием безопасных методов
             total_posts = len(processed_posts)
@@ -828,8 +887,11 @@ class TelegramAnalytics:
                 'channel_info': channel_info,
                 'analysis_period': {
                     'hours_back': hours_back,
-                    'start_time': start_time.strftime('%d.%m.%Y %H:%M'),
-                    'end_time': end_time.strftime('%d.%m.%Y %H:%M')
+                    'start_time': start_time.strftime('%d.%m.%Y %H:%M') if not used_fallback else None,
+                    'end_time': end_time.strftime('%d.%m.%Y %H:%M') if not used_fallback else None,
+                    'actual_period': actual_period_text,
+                    'used_fallback': used_fallback,
+                    'fallback_reason': fallback_reason
                 },
                 'summary': {
                     'total_posts': total_posts,
@@ -848,7 +910,8 @@ class TelegramAnalytics:
                 'group_processing_info': {
                     'groups_processed': len(grouped_messages),
                     'single_messages': len(single_messages)
-                }
+                },
+                'last_message_date': last_message_date.strftime('%Y-%m-%d %H:%M') if last_message_date else 'Неизвестно'
             }
             
             return report
